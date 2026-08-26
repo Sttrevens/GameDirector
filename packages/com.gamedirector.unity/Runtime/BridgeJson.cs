@@ -8,7 +8,7 @@ namespace GameDirector.Unity
     /// used by the dotnet side (GameDirector.Client.DslJson). Newtonsoft reads
     /// case-insensitively, so inbound TimelineAsset JSON just works.
     /// </summary>
-    internal static class BridgeJson
+    public static class BridgeJson
     {
         private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {

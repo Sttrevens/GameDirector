@@ -40,21 +40,15 @@ namespace GameDirector.Unity
         {
             if (string.IsNullOrEmpty(roleId)) return null;
             if (_dynamicRoles.TryGetValue(roleId, out var t) && t != null) return t;
-            var binding = DirectorRoleBinding.Find(roleId);
-            return binding != null ? binding.transform : null;
+            return DirectorRoleRegistry.Find(roleId);
         }
 
         protected bool TryResolvePose(string locationId, out Vector3 pos, out float headingDeg)
         {
             pos = default; headingDeg = 0f;
             if (string.IsNullOrEmpty(locationId)) return false;
-            var anchor = DirectorLocationAnchor.Find(locationId);
-            if (anchor != null)
-            {
-                pos = anchor.transform.position;
-                headingDeg = anchor.transform.eulerAngles.y;
+            if (DirectorLocationRegistry.FindPose(locationId, out pos, out headingDeg))
                 return true;
-            }
             // Fall back to manifest coordinates (authoring-time truth).
             var loc = Manifest?.FindLocation(locationId);
             if (loc?.Position != null && loc.Position.Length == 3)

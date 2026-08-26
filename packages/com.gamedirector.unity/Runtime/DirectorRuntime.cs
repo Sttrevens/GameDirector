@@ -37,7 +37,7 @@ namespace GameDirector.Unity
         private void Update()
         {
             if (_player == null || _player.State != PlayerState.Playing) return;
-            _player.Tick(Time.unscaledDeltaTime);
+            _player.Tick(UnityEngine.Time.unscaledDeltaTime);
             DrainEvents();
         }
 

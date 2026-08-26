@@ -55,9 +55,9 @@ namespace GameDirector.CDREBIRTH
                 return null;
             }
             var instance = Instantiate(prefab, pos, rot);
-            // TODO(M1): disable monster AI/aggro components here so the timeline,
-            // not the game's AI, owns the performance (e.g. set monsters to a
-            // director-controlled presentation mode).
+            // The timeline, not the game's AI, owns the performance: strip AI,
+            // input, networking behaviours and make physics kinematic.
+            PresentationMode.Apply(instance);
             return instance.transform;
         }
 

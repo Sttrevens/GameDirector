@@ -51,8 +51,14 @@
     { "id": "gf_gate", "space": "grimforest", "position": [ 0.0, 0.0, 0.0 ], "headingDeg": 0.0 },
     { "id": "gf_stage", "space": "grimforest", "position": [ 12.0, 0.0, 6.0 ], "headingDeg": 90.0 },
     { "id": "gf_cam_north", "space": "grimforest", "position": [ 12.0, 4.0, -8.0 ], "headingDeg": 0.0 },
-    { "id": "gf_cam_low", "space": "grimforest", "position": [ 10.0, 0.6, 2.0 ], "headingDeg": 15.0 },
-    { "id": "gf_cam_orbit", "space": "grimforest", "position": [ 12.0, 2.5, 6.0 ], "headingDeg": 0.0 }
+    { "id": "gf_cam_low", "space": "grimforest", "position": [ 0.0, 2.1, -2.0 ], "headingDeg": 0.0 },
+    { "id": "gf_cam_orbit", "space": "grimforest", "position": [ 0.0, 2.5, -2.0 ], "headingDeg": 0.0 },
+    { "id": "sc_north_gate", "space": "grimforest", "position": [ 0.0, 2.1, -2.0 ], "headingDeg": 0.0 },
+    { "id": "sc_west_gate", "space": "grimforest", "position": [ -5.0, 1.6, 6.0 ], "headingDeg": 90.0 },
+    { "id": "sc_east_gate", "space": "grimforest", "position": [ 6.0, 2.1, 2.0 ], "headingDeg": 270.0 },
+    { "id": "sc_high_gate", "space": "grimforest", "position": [ 0.0, 8.1, 6.0 ], "headingDeg": 0.0 },
+    { "id": "sc_north_stage", "space": "grimforest", "position": [ 2.0, 2.6, 8.0 ], "headingDeg": 0.0 },
+    { "id": "sc_east_stage", "space": "grimforest", "position": [ 8.0, 2.1, 16.0 ], "headingDeg": 270.0 }
   ],
   "audio": [
     { "id": "bgm_dark_forest", "kind": "bgm" },

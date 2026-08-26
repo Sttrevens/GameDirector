@@ -1,0 +1,31 @@
+{
+  "version": "0.1",
+  "id": "scout_grimforest_gate",
+  "title": "Location scout — 6 candidate camera spots around gate/stage (14s)",
+  "metadata": {
+    "intent": "spawn bigguai at gf_gate, cycle 6 candidate lockoff shots, capture one frame per spot, pick production anchors",
+    "usage": "gd play, capture at t=1.5/4/6.5/9/11.5/14"
+  },
+  "cues": [
+    { "t": 0.0, "type": "actor.spawn", "role": "bigguai", "location": "gf_gate", "headingTo": "gf_stage" },
+    { "t": 0.2, "type": "actor.anim", "role": "bigguai", "clip": "RageExpose", "fade": 0.1 },
+
+    { "t": 0.5, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "full", "from": "sc_north_gate", "durationSeconds": 2.5, "fov": 45.0, "ease": "linear" } },
+    { "t": 0.5, "type": "marker", "label": "scout_1_north_gate" },
+
+    { "t": 3.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "full", "from": "sc_west_gate", "durationSeconds": 2.5, "fov": 45.0, "ease": "linear" } },
+    { "t": 3.0, "type": "marker", "label": "scout_2_west_gate" },
+
+    { "t": 5.5, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "full", "from": "sc_east_gate", "durationSeconds": 2.5, "fov": 45.0, "ease": "linear" } },
+    { "t": 5.5, "type": "marker", "label": "scout_3_east_gate" },
+
+    { "t": 8.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "wide", "from": "sc_high_gate", "durationSeconds": 2.5, "fov": 50.0, "ease": "linear" } },
+    { "t": 8.0, "type": "marker", "label": "scout_4_high_gate" },
+
+    { "t": 10.5, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "full", "from": "sc_north_stage", "durationSeconds": 2.5, "fov": 45.0, "ease": "linear" } },
+    { "t": 10.5, "type": "marker", "label": "scout_5_north_stage" },
+
+    { "t": 13.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bigguai", "frame": "full", "from": "sc_east_stage", "durationSeconds": 2.5, "fov": 45.0, "ease": "linear" } },
+    { "t": 13.0, "type": "marker", "label": "scout_6_east_stage" }
+  ]
+}
