@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 + zero dependencies: this DLL is dropped straight into
+         Unity 2022.3 (packages/com.gamedirector.unity/Plugins). Keep it pure. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>GameDirector.Core</RootNamespace>
+    <AssemblyName>GameDirector.Core</AssemblyName>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+</Project>

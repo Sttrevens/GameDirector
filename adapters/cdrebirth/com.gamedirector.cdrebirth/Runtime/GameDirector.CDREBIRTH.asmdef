@@ -1,0 +1,12 @@
+{
+    "name": "GameDirector.CDREBIRTH",
+    "rootNamespace": "GameDirector.CDREBIRTH",
+    "references": [
+        "GameDirector.Unity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

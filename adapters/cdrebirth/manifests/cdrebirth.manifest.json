@@ -1,0 +1,70 @@
+{
+  "game": "CDREBIRTH",
+  "gameVersion": "demo-candidate-2026.08",
+  "manifestVersion": "0.1",
+  "roles": [
+    {
+      "id": "hero",
+      "kind": "player",
+      "displayName": "Streamer (local player)",
+      "defaultActor": "streamer",
+      "presentAtStart": true,
+      "bindingHint": "bind:scene-component:PlayerMovement"
+    },
+    {
+      "id": "bigguai",
+      "kind": "monster",
+      "displayName": "BigGuai (大怪)",
+      "defaultActor": "bigguai",
+      "presentAtStart": false,
+      "bindingHint": "spawn:prefab:BigGuai (offline sandbox only; live runs are StateAuthority-owned)"
+    },
+    {
+      "id": "speaker",
+      "kind": "monster",
+      "displayName": "SpeakerMonster (音响怪)",
+      "defaultActor": "speaker_monster",
+      "presentAtStart": false,
+      "bindingHint": "spawn:prefab:SpeakerMonster (offline sandbox only)"
+    }
+  ],
+  "actors": [
+    {
+      "id": "streamer",
+      "displayName": "Streamer",
+      "clips": [ "Idle", "Walk", "Run", "Cheer", "Scared", "FilmRaise" ]
+    },
+    {
+      "id": "bigguai",
+      "displayName": "BigGuai",
+      "clips": [ "Idle", "Walk", "RageExpose", "ConfidencePose", "Tornado", "Attack", "Die" ],
+      "tags": [ "foreground", "pride-semantics" ]
+    },
+    {
+      "id": "speaker_monster",
+      "displayName": "SpeakerMonster",
+      "clips": [ "Idle", "Walk", "CommandReact", "BassBlast" ],
+      "tags": [ "foreground", "deterministic-commands" ]
+    }
+  ],
+  "locations": [
+    { "id": "gf_gate", "space": "grimforest", "position": [ 0.0, 0.0, 0.0 ], "headingDeg": 0.0 },
+    { "id": "gf_stage", "space": "grimforest", "position": [ 12.0, 0.0, 6.0 ], "headingDeg": 90.0 },
+    { "id": "gf_cam_north", "space": "grimforest", "position": [ 12.0, 4.0, -8.0 ], "headingDeg": 0.0 },
+    { "id": "gf_cam_low", "space": "grimforest", "position": [ 10.0, 0.6, 2.0 ], "headingDeg": 15.0 },
+    { "id": "gf_cam_orbit", "space": "grimforest", "position": [ 12.0, 2.5, 6.0 ], "headingDeg": 0.0 }
+  ],
+  "audio": [
+    { "id": "bgm_dark_forest", "kind": "bgm" },
+    { "id": "sfx_roar_bigguai", "kind": "sfx" },
+    { "id": "amb_forest_wind", "kind": "amb" }
+  ],
+  "shotTypes": [ "lockoff", "dolly", "orbit", "tracking", "crane" ],
+  "frameTypes": [ "extreme-closeup", "closeup", "medium", "full", "wide" ],
+  "capabilities": {
+    "director.mode": "offline-sandbox",
+    "capture.frame": "png",
+    "capture.video": "avpro-movie-capture (present in project, wiring planned in M2)",
+    "fusion.multiplayer": "out-of-scope-for-v0 (see docs/03 authority lens)"
+  }
+}

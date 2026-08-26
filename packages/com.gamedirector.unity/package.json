@@ -1,0 +1,11 @@
+{
+  "name": "com.gamedirector.unity",
+  "version": "0.1.0",
+  "displayName": "GameDirector Bridge (Unity)",
+  "description": "In-game bridge for the GameDirector AI director kernel: HTTP JSON-RPC server (play mode), deterministic timeline host, cinematic camera rig, frame capture, and the generic scene adapter base class. Game-specific adapters extend this package. Depends on the precompiled GameDirector.Core.dll in Plugins/ (rebuild via tools/build_core_dll.sh in the GameDirector repo).",
+  "unity": "2022.3",
+  "license": "Proprietary",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}

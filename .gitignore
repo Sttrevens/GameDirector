@@ -1,0 +1,16 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# OS
+.DS_Store
+
+# Local tool output
+out/
+captures/
+
+# NOTE: packages/com.gamedirector.unity/Plugins/*.dll IS committed on purpose:
+# Unity consumes the precompiled GameDirector.Core.dll so the Unity project
+# does not need a dotnet toolchain. Rebuild via tools/build_core_dll.sh.

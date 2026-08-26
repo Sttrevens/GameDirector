@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="xunit" Version="2.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameDirector.Core\GameDirector.Core.csproj" />
+    <ProjectReference Include="..\GameDirector.Client\GameDirector.Client.csproj" />
+  </ItemGroup>
+
+  <!-- Repo-level sample assets are part of the contract: they must always compile. -->
+  <ItemGroup>
+    <Content Include="..\..\samples\timelines\pv_grimforest_demo.json" Link="Samples\pv_grimforest_demo.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\adapters\cdrebirth\manifests\cdrebirth.manifest.json" Link="Samples\cdrebirth.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
