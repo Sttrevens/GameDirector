@@ -4,7 +4,7 @@
 
 ## 从 CDREBIRTH 现状推出的三个适配事实
 
-1. **没有 Cinemachine / Timeline 资产可用。** 全项目只有 `Player.cs` 引用 Cinemachine，Timeline 仅出现在第三方插件里 ⇒ 镜头系统由 GameDirector 自带通用解释器（`CinematicCameraRig`）承担，不给游戏仓库加依赖。
+1. **游戏代码不依赖 Cinemachine / Timeline（包已安装但游戏代码基本不用）。** `Packages/manifest.json` 里有 cinemachine 2.10 / timeline 1.7.6，但全项目只有 `Player.cs` 引用 Cinemachine，Timeline 仅出现在第三方插件里 ⇒ 镜头系统由 GameDirector 自带通用解释器（`CinematicCameraRig`）承担，不与游戏内联机时代的相机栈（`AimCameraLock` 执行序 32700 等）纠缠，也不给游戏仓库加新依赖。
 2. **已有 AVPro Movie Capture（RenderHeads）。** M2 的视频 take 直接驱动它，不需要引入新录制方案。
 3. **联机权威纪律极强（runner-scoped、禁全局单例、SA/IA/peer 分层）。** ⇒ v0 彻底绕开：director mode = 无 NetworkRunner 的离线沙盒场景。桥包代码也遵守项目教训：全部状态挂在场景组件上，零静态（marker registry 除外——纯呈现查找表，OnEnable/OnDisable 对称维护）。
 

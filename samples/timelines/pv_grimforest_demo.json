@@ -4,14 +4,14 @@
   "title": "Grimforest PV demo — BigGuai reveal (24s)",
   "metadata": {
     "scene": "grimforest",
-    "intent": "opening wide -> dolly-in -> monster reveal -> rage beat -> slow-mo tornado -> hero closeup",
+    "intent": "opening wide -> dolly-in -> monster reveal -> rage beat -> slow-mo hurricane -> hero closeup",
     "author": "human (reference implementation for LLM-authored timelines)"
   },
   "cues": [
     { "t": 0.0, "type": "audio.play", "audioId": "amb_forest_wind", "volume": 0.5 },
     { "t": 0.0, "type": "audio.play", "audioId": "bgm_dark_forest", "volume": 0.4 },
     { "t": 0.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "hero", "frame": "wide", "from": "gf_cam_north", "durationSeconds": 4.0, "fov": 55.0, "ease": "linear" } },
-    { "t": 0.5, "type": "actor.anim", "role": "hero", "clip": "Idle", "fade": 0.2 },
+    { "t": 0.5, "type": "actor.anim", "role": "hero", "clip": "IKIdle", "fade": 0.2 },
     { "t": 0.0, "type": "marker", "label": "act1_establishing" },
 
     { "t": 4.0, "type": "camera.shot", "shot": { "type": "dolly", "subject": "hero", "frame": "full", "from": "gf_cam_north", "to": "gf_cam_low", "durationSeconds": 4.0, "fov": 45.0, "ease": "inOut" } },
@@ -27,16 +27,16 @@
     { "t": 11.0, "type": "camera.shot", "shot": { "type": "orbit", "subject": "bigguai", "frame": "medium", "from": "gf_cam_orbit", "durationSeconds": 5.0, "fov": 35.0, "ease": "inOut", "params": { "orbitDeg": 120.0 } } },
     { "t": 11.5, "type": "actor.move", "role": "bigguai", "to": "gf_stage", "speed": 2.2, "headingTo": "hero" },
     { "t": 13.0, "type": "actor.face", "role": "hero", "headingTo": "bigguai" },
-    { "t": 13.2, "type": "actor.anim", "role": "hero", "clip": "Scared", "fade": 0.2 },
+    { "t": 13.2, "type": "actor.anim", "role": "hero", "clip": "Dodge", "fade": 0.2 },
     { "t": 11.0, "type": "marker", "label": "act2_orbit" },
 
     { "t": 16.0, "type": "world.timescale", "scale": 0.25, "duration": 2.5 },
-    { "t": 16.0, "type": "actor.anim", "role": "bigguai", "clip": "Tornado", "fade": 0.1 },
+    { "t": 16.0, "type": "actor.anim", "role": "bigguai", "clip": "Hurricane", "fade": 0.1 },
     { "t": 16.0, "type": "camera.shot", "shot": { "type": "crane", "subject": "bigguai", "frame": "medium", "from": "gf_cam_low", "to": "gf_cam_north", "durationSeconds": 4.0, "fov": 30.0, "ease": "out" } },
-    { "t": 16.0, "type": "marker", "label": "act3_slowmo_tornado" },
+    { "t": 16.0, "type": "marker", "label": "act3_slowmo_hurricane" },
 
     { "t": 20.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "hero", "frame": "closeup", "from": "gf_cam_low", "durationSeconds": 3.0, "fov": 28.0, "ease": "inOut", "lookAt": "bigguai" } },
-    { "t": 20.5, "type": "actor.anim", "role": "hero", "clip": "FilmRaise", "fade": 0.25 },
+    { "t": 20.5, "type": "actor.anim", "role": "hero", "clip": "Aiming", "fade": 0.25 },
     { "t": 20.0, "type": "marker", "label": "act3_hero_closeup" },
 
     { "t": 23.0, "type": "audio.stop", "audioId": "bgm_dark_forest" },
