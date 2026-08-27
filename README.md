@@ -47,7 +47,11 @@ dotnet run --project src/GameDirector.Cli -- \
 dotnet run --project src/GameDirector.Cli -- grammar   # 打印 DSL 速查
 ```
 
-接游戏（待 M1 完成 Unity 侧接线后）：
+接游戏（CDREBIRTH 为首个适配场，M1 已验证）：
+
+CDREBIRTH 通过 **embedded 快照**消费两个 Unity 包（`Packages/com.gamedirector.unity`、`Packages/com.gamedirector.cdrebirth`），快照由 CDREBIRTH 侧的 `tools/dev/sync_gamedirector.sh` 从本仓库单向同步并记录源 commit。⚠️ 不要用 `file:/绝对路径` 引用本仓库——绝对路径会写进共享 `manifest.json`，其他机器（Windows/CI）无法解析（M1 初版踩过，已修复）。游戏成熟到需要 Git UPM 钉 commit 时再升级，前提是多机器/CI 对私有远端都有读权限。
+
+接好之后（在游戏 Editor 播放态、沙盒场景内）：
 
 ```bash
 dotnet run --project src/GameDirector.Cli -- manifest --endpoint http://127.0.0.1:39777
@@ -57,5 +61,7 @@ dotnet run --project src/GameDirector.Cli -- capture --out captures/frame.png
 
 ## 状态
 
-- M0（当前提交）：通用内核 + 测试 + CLI/MCP 骨架 + Unity 桥包源码 + CDREBIRTH 适配计划。**未触碰 CDREBIRTH 仓库。**
-- 后续里程碑见 `docs/04-roadmap.md`（M3 = AI 剪片）。
+- M0：通用内核 + 测试 + CLI/MCP 骨架 + Unity 桥包源码 + CDREBIRTH 适配计划。
+- M1（2026-08-26 完成）：CDREBIRTH 首次实拍——24s 样例时间轴在 grimforest 沙盒完整播放、事件流与编译产物一致、揭示帧 BigGuai 居中（6 候选机位经勘察时间轴实拍筛选）。踩坑与结论见 `docs/03-cdrebirth-adapter-plan.md` 的 M1 结果节。
+- 消费方式：CDREBIRTH 内嵌快照（embedded packages，见上）。
+- 后续里程碑见 `docs/04-roadmap.md`（M2 录制/审片，M3 = AI 剪片，M4 第二游戏证伪）。

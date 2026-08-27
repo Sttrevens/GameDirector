@@ -32,7 +32,7 @@ DM（LLMTaskDirector/LiveShow/Ambient）是玩法真相（任务、评分、热�
 
 ## M1 接线清单（下次进 Unity 时执行）
 
-1. CDREBIRTH `Packages/manifest.json` 增加 local package 引用：`com.gamedirector.unity` 与 `com.gamedirector.cdrebirth` 指向本仓库绝对路径（**源码不进 CDREBIRTH 仓库**；仓库侧只多两行 manifest 引用，可整行 revert）。
+1. ~~CDREBIRTH `Packages/manifest.json` 增加 local package 引用~~ **（已被 2026-08-26 下午的修复取代）**：绝对 `file:` 路径进了共享 manifest 导致所有非本机（Windows/CI）无法解析包。现行消费方式：CDREBIRTH 仓库 `tools/dev/sync_gamedirector.sh` 把 `packages/com.gamedirector.unity` 与 `adapters/cdrebirth/com.gamedirector.cdrebirth` 同步为 `Packages/` 下的 embedded 快照并记录源 commit。升级路径：Git UPM 钉 commit（需先推远端并解决多机器/CI 读权限）。
 2. 跑 `tools/build_core_dll.sh` 生成 `Plugins/GameDirector.Core.dll`，让 Unity 异步编译（遵守 `Docs/AgentWorkflow/UnityEditorMonoGcStackOverflow_2026-08-21.md`：禁止 ForceSynchronousImport；等 Editor 自然编译完再查 Console）。
 3. 复制 grimforest 场景为沙盒副本 → 摆 `DirectorLocationAnchor` + 挂 `DirectorBridgeServer/DirectorRuntime/CdRebirthAdapter` → manifestJson 指向 `cdrebirth.manifest.json`。
 4. Play mode 验证四步：`gd manifest` 拉清单 → `gd validate` → `gd play samples/timelines/pv_grimforest_demo.json` → `gd capture` 看帧。预期 falsifier：若 BigGuai AI 抢戏（自行移动/攻击），说明呈现模式隔离没做干净，回到清单第 3 步。
