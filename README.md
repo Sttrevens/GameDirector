@@ -61,6 +61,7 @@ dotnet run --project src/GameDirector.Cli -- capture --out captures/frame.png
 
 ## 状态
 
+- 远端：<https://github.com/Sttrevens/GameDirector>（private，备份 + 未来 Git UPM 升级的载体；需要读权限的协作者由仓库 owner 逐个添加）。
 - M0：通用内核 + 测试 + CLI/MCP 骨架 + Unity 桥包源码 + CDREBIRTH 适配计划。
 - M1（2026-08-26 完成）：CDREBIRTH 首次实拍——24s 样例时间轴在 grimforest 沙盒完整播放、事件流与编译产物一致、揭示帧 BigGuai 居中（6 候选机位经勘察时间轴实拍筛选）。踩坑与结论见 `docs/03-cdrebirth-adapter-plan.md` 的 M1 结果节。
 - 消费方式：CDREBIRTH 内嵌快照（embedded packages，见上）。
