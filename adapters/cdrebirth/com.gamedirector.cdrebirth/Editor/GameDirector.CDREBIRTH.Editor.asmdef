@@ -1,0 +1,6 @@
+{
+ "name":"GameDirector.CDREBIRTH.Editor",
+ "references":["GameDirector.Unity","GameDirector.CDREBIRTH"],
+ "includePlatforms":["Editor"],
+ "autoReferenced":true
+}

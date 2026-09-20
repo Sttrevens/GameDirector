@@ -28,6 +28,12 @@ namespace GameDirector.Client
 
         public static T Load<T>(string path) => Deserialize<T>(File.ReadAllText(path));
 
+        public static void SaveAtomic<T>(string path,T value) {
+            var temp=path+"."+System.Guid.NewGuid().ToString("N")+".tmp";
+            try {File.WriteAllText(temp,Serialize(value));File.Move(temp,path,true);}
+            finally {if(File.Exists(temp))File.Delete(temp);}
+        }
+
         public static void Save<T>(string path, T value) => File.WriteAllText(path, Serialize(value));
     }
 }

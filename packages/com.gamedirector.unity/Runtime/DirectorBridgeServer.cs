@@ -2,6 +2,9 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using GameDirector.Core.Capture;
+using GameDirector.Core.Dsl;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -13,13 +16,8 @@ namespace GameDirector.Unity
     /// thread; every Unity-API-touching request is marshalled to the main thread
     /// via a queue drained in Update.
     ///
-    /// Endpoints (default http://127.0.0.1:39777):
-    ///   GET  /health          plain JSON, answered off-thread (no Unity API)
-    ///   GET  /manifest        main thread; serializes the adapter manifest
-    ///   POST /timeline/play   body = TimelineAsset JSON; compiles server-side
-    ///   POST /timeline/stop
-    ///   GET  /status
-    ///   GET  /capture         PNG bytes from the director camera
+    /// Routes and the default port come from GameDirector.Core's BridgeRoutes /
+    /// BridgeDefaults, so this server and every client bind the same contract.
     ///
     /// Security posture: loopback only, play mode only, no auth. This is a local
     /// authoring tool, never ship it enabled in a release build — the component
@@ -28,7 +26,14 @@ namespace GameDirector.Unity
     [DefaultExecutionOrder(-10000)]
     public sealed class DirectorBridgeServer : MonoBehaviour
     {
-        [SerializeField] private int port = 39777;
+        // Bridge saturation bounds, named once: how much queued work one game
+        // frame may drain, how much may wait, and how long a request waits.
+        private const int MainThreadBudgetPerUpdate = 4;
+        private const int MaxQueuedRequests = 32;
+        private const int RequestTimeoutMs = 15000;
+        private const int MaxBodyBytes = 1024 * 1024;
+
+        [SerializeField] private int port = BridgeDefaults.UnityPort;
         [SerializeField] private bool allowOutsideEditor;
 
         private HttpListener _listener;
@@ -39,13 +44,15 @@ namespace GameDirector.Unity
         {
             public System.Func<byte[]> Work;       // runs on main thread
             public string ContentType = "application/json";
-            public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
+            public readonly TaskCompletionSource<bool> Done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public int State; // 0 queued, 1 executing, 2 completed, -1 cancelled
             public byte[] Result;
             public string Error;
         }
 
         private readonly ConcurrentQueue<Job> _jobs = new ConcurrentQueue<Job>();
         private DirectorRuntime _runtime;
+        private int _queued;
 
         public int Port => port;
 
@@ -86,15 +93,24 @@ namespace GameDirector.Unity
             try { _listener?.Stop(); } catch { }
             try { _listener?.Close(); } catch { }
             _listener = null;
+            while (_jobs.TryDequeue(out var job)) {
+                Interlocked.Decrement(ref _queued);
+                if (Interlocked.CompareExchange(ref job.State, -1, 0) == 0) {
+                    job.Error = "bridge stopped";job.Done.TrySetResult(false);
+                }
+            }
         }
 
         private void Update()
         {
-            while (_jobs.TryDequeue(out var job))
+            int budget = MainThreadBudgetPerUpdate;
+            while (budget-- > 0 && _jobs.TryDequeue(out var job))
             {
+                Interlocked.Decrement(ref _queued);
+                if (Interlocked.CompareExchange(ref job.State, 1, 0) != 0) continue;
                 try { job.Result = job.Work(); }
                 catch (System.Exception ex) { job.Error = ex.Message; }
-                finally { job.Done.Set(); }
+                finally { Interlocked.Exchange(ref job.State, 2); job.Done.TrySetResult(true); }
             }
         }
 
@@ -117,8 +133,14 @@ namespace GameDirector.Unity
             {
                 string path = (ctx.Request.Url != null ? ctx.Request.Url.AbsolutePath : "/").TrimEnd('/');
                 string method = ctx.Request.HttpMethod;
+                if (!string.IsNullOrEmpty(ctx.Request.Headers["Origin"])) {
+                    Respond(ctx, 403, "application/json", "{\"error\":\"browser-origin bridge requests are not allowed\"}");return;
+                }
+                if (method == "POST" && ctx.Request.HasEntityBody && !(ctx.Request.ContentType??"").StartsWith("application/json", System.StringComparison.OrdinalIgnoreCase)) {
+                    Respond(ctx, 415, "application/json", "{\"error\":\"application/json required\"}");return;
+                }
 
-                if (method == "GET" && path == "/health")
+                if (method == "GET" && path == "/" + BridgeRoutes.Health)
                 {
                     Respond(ctx, 200, "application/json", "{\"ok\":true}");
                     return;
@@ -128,14 +150,24 @@ namespace GameDirector.Unity
                 if (method == "POST")
                 {
                     using var ms = new System.IO.MemoryStream();
-                    ctx.Request.InputStream.CopyTo(ms);
+                    var buffer = new byte[8192]; int read;
+                    while ((read = ctx.Request.InputStream.Read(buffer, 0, buffer.Length)) > 0) {
+                        if (ms.Length + read > MaxBodyBytes) { Respond(ctx, 413, "application/json", "{\"error\":\"request body too large\"}");return; }
+                        ms.Write(buffer,0,read);
+                    }
                     body = ms.ToArray();
                 }
 
                 var job = new Job { Work = () => RouteOnMainThread(method, path, body) };
-                if (method == "GET" && path == "/capture") job.ContentType = "image/png";
+                if ((method == "GET" && path == "/" + BridgeRoutes.Capture) || (method == "POST" && path == "/" + BridgeRoutes.TakeFrame)) job.ContentType = "image/png";
+                if (Interlocked.Increment(ref _queued) > MaxQueuedRequests || !_running) {
+                    Interlocked.Decrement(ref _queued); Respond(ctx, 503, "application/json", "{\"error\":\"bridge busy or stopping\"}");return;
+                }
                 _jobs.Enqueue(job);
-                if (!job.Done.Wait(15000)) { Respond(ctx, 504, "application/json", "{\"error\":\"main thread timeout\"}"); return; }
+                if (!job.Done.Task.Wait(RequestTimeoutMs)) {
+                    bool cancelled = Interlocked.CompareExchange(ref job.State, -1, 0) == 0;
+                    Respond(ctx, 504, "application/json", JsonConvert.SerializeObject(new {error="main thread timeout", cancelledBeforeExecution=cancelled})); return;
+                }
                 if (job.Error != null) { Respond(ctx, 400, "application/json", JsonConvert.SerializeObject(new { error = job.Error })); return; }
                 Respond(ctx, 200, job.ContentType, job.Result);
             }
@@ -153,16 +185,25 @@ namespace GameDirector.Unity
         {
             switch (method + " " + path)
             {
-                case "GET /manifest":
+                case "GET /" + BridgeRoutes.Manifest:
                     return Json(_runtime.Manifest);
-                case "POST /timeline/play":
+                case "POST /" + BridgeRoutes.TimelinePlay:
                     return Json(_runtime.PlayFromJson(Encoding.UTF8.GetString(body ?? System.Array.Empty<byte>())));
-                case "POST /timeline/stop":
+                case "POST /" + BridgeRoutes.TimelineStop:
                     _runtime.Stop();
                     return Json(new { ok = true });
-                case "GET /status":
+                case "POST /" + BridgeRoutes.TakeStart:
+                    return Json(_runtime.BeginTake(BridgeJson.Deserialize<TakeRequest>(Encoding.UTF8.GetString(body))));
+                case "POST /" + BridgeRoutes.TakeFrame:
+                    return _runtime.NextFrame(BridgeJson.Deserialize<FrameRequest>(Encoding.UTF8.GetString(body)));
+                case "POST /" + BridgeRoutes.TakeStop:
+                    _runtime.StopTake(BridgeJson.Deserialize<FrameRequest>(Encoding.UTF8.GetString(body)).TakeId);
+                    return Json(new {ok=true});
+                case "GET /" + BridgeRoutes.Take:
+                    return Json(_runtime.GetTakeDto());
+                case "GET /" + BridgeRoutes.Status:
                     return Json(_runtime.GetStatusDto());
-                case "GET /capture":
+                case "GET /" + BridgeRoutes.Capture:
                     return _runtime.CapturePng();
                 default:
                     throw new System.InvalidOperationException("no route: " + method + " " + path);

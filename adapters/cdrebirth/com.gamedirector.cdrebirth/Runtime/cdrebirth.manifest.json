@@ -17,7 +17,7 @@
       "displayName": "BigGuai (大怪)",
       "defaultActor": "bigguai",
       "presentAtStart": false,
-      "bindingHint": "prefab:Assets/Prefabs/Film Targets/SCP Monsters/Big Guai.prefab (offline sandbox only; live runs are StateAuthority-owned)"
+      "bindingHint": "prefab:Assets/Prefabs/Film Targets/SCP Monsters/Big Guai V2.prefab (offline sandbox only; live runs are StateAuthority-owned)"
     },
     {
       "id": "speaker",
@@ -32,45 +32,219 @@
     {
       "id": "streamer",
       "displayName": "Streamer ([YiFan]PlayerController states, verified 2026-09 M1)",
-      "clips": [ "IKIdle", "Forward", "Aim", "Aiming", "Dodge", "Jump", "Pickup", "Throw", "Hip Hop Dancing", "GetUp" ]
+      "clips": [
+        "Base State",
+        "Jump",
+        "Pickup",
+        "Throw",
+        "Die",
+        "Dying",
+        "IKIdle",
+        "IKAim",
+        "Dancing Twerk",
+        "Fall Flat",
+        "Female Standing Pose",
+        "Hip Hop Dancing",
+        "Rumba Dancing",
+        "Standing React Death Backward",
+        "Boot",
+        "Kick",
+        "AssProvoke",
+        "BackFlip",
+        "HurricaneKick",
+        "Dodge",
+        "GetUp"
+      ]
     },
     {
       "id": "bigguai",
       "displayName": "BigGuai (Assets/Animation/BigGuai.controller states, verified 2026-09 M1)",
-      "clips": [ "Idle", "Walk", "Run", "Irritated", "PrideTriggered", "PrideTriggered2", "PrideTriggered3", "PrideTriggered4", "RageTriggered", "RageExpose", "ConfidencePose", "Hurricane", "Attack", "Throwing", "GetUp", "LiftPickup", "LiftShowOff", "LiftFailed" ],
-      "tags": [ "foreground", "pride-semantics" ]
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Irritated",
+        "PrideTriggered",
+        "PrideTriggered2",
+        "PrideTriggered3",
+        "PrideTriggered4",
+        "RageTriggered",
+        "RageExpose",
+        "ConfidencePose",
+        "Hurricane",
+        "Attack",
+        "Throwing",
+        "GetUp",
+        "LiftPickup",
+        "LiftShowOff",
+        "LiftFailed"
+      ],
+      "tags": [
+        "foreground",
+        "pride-semantics"
+      ]
     },
     {
       "id": "speaker_monster",
       "displayName": "SpeakerMonster (Assets/Art/Animations/SpeakerMonster/SpeakerMonster.controller states, verified 2026-09 M1)",
-      "clips": [ "Idle", "Patrolling", "Chasing", "Speaking", "Attack", "BiteAttack" ],
-      "tags": [ "foreground", "deterministic-commands" ]
+      "clips": [
+        "Idle",
+        "Chasing",
+        "Speaking",
+        "BiteAttack",
+        "Patrolling"
+      ],
+      "tags": [
+        "foreground",
+        "deterministic-commands"
+      ]
     }
   ],
   "locations": [
-    { "id": "gf_gate", "space": "grimforest", "position": [ 0.0, 0.0, 0.0 ], "headingDeg": 0.0 },
-    { "id": "gf_stage", "space": "grimforest", "position": [ 12.0, 0.0, 6.0 ], "headingDeg": 90.0 },
-    { "id": "gf_cam_north", "space": "grimforest", "position": [ 12.0, 4.0, -8.0 ], "headingDeg": 0.0 },
-    { "id": "gf_cam_low", "space": "grimforest", "position": [ 0.0, 2.1, -2.0 ], "headingDeg": 0.0 },
-    { "id": "gf_cam_orbit", "space": "grimforest", "position": [ 0.0, 2.5, -2.0 ], "headingDeg": 0.0 },
-    { "id": "sc_north_gate", "space": "grimforest", "position": [ 0.0, 2.1, -2.0 ], "headingDeg": 0.0 },
-    { "id": "sc_west_gate", "space": "grimforest", "position": [ -5.0, 1.6, 6.0 ], "headingDeg": 90.0 },
-    { "id": "sc_east_gate", "space": "grimforest", "position": [ 6.0, 2.1, 2.0 ], "headingDeg": 270.0 },
-    { "id": "sc_high_gate", "space": "grimforest", "position": [ 0.0, 8.1, 6.0 ], "headingDeg": 0.0 },
-    { "id": "sc_north_stage", "space": "grimforest", "position": [ 2.0, 2.6, 8.0 ], "headingDeg": 0.0 },
-    { "id": "sc_east_stage", "space": "grimforest", "position": [ 8.0, 2.1, 16.0 ], "headingDeg": 270.0 }
+    {
+      "id": "gf_gate",
+      "space": "grimforest",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "gf_stage",
+      "space": "grimforest",
+      "position": [
+        12.0,
+        0.0,
+        6.0
+      ],
+      "headingDeg": 90.0
+    },
+    {
+      "id": "gf_cam_north",
+      "space": "grimforest",
+      "position": [
+        12.0,
+        4.0,
+        -8.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "gf_cam_low",
+      "space": "grimforest",
+      "position": [
+        0.0,
+        2.1,
+        -2.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "gf_cam_orbit",
+      "space": "grimforest",
+      "position": [
+        0.0,
+        2.5,
+        -2.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "sc_north_gate",
+      "space": "grimforest",
+      "position": [
+        0.0,
+        2.1,
+        -2.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "sc_west_gate",
+      "space": "grimforest",
+      "position": [
+        -5.0,
+        1.6,
+        6.0
+      ],
+      "headingDeg": 90.0
+    },
+    {
+      "id": "sc_east_gate",
+      "space": "grimforest",
+      "position": [
+        6.0,
+        2.1,
+        2.0
+      ],
+      "headingDeg": 270.0
+    },
+    {
+      "id": "sc_high_gate",
+      "space": "grimforest",
+      "position": [
+        0.0,
+        8.1,
+        6.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "sc_north_stage",
+      "space": "grimforest",
+      "position": [
+        2.0,
+        2.6,
+        8.0
+      ],
+      "headingDeg": 0.0
+    },
+    {
+      "id": "sc_east_stage",
+      "space": "grimforest",
+      "position": [
+        8.0,
+        2.1,
+        16.0
+      ],
+      "headingDeg": 270.0
+    }
   ],
   "audio": [
-    { "id": "bgm_dark_forest", "kind": "bgm" },
-    { "id": "sfx_roar_bigguai", "kind": "sfx" },
-    { "id": "amb_forest_wind", "kind": "amb" }
+    {
+      "id": "bgm_dark_forest",
+      "kind": "bgm"
+    },
+    {
+      "id": "sfx_roar_bigguai",
+      "kind": "sfx"
+    },
+    {
+      "id": "amb_forest_wind",
+      "kind": "amb"
+    }
   ],
-  "shotTypes": [ "lockoff", "dolly", "orbit", "tracking", "crane" ],
-  "frameTypes": [ "extreme-closeup", "closeup", "medium", "full", "wide" ],
+  "shotTypes": [
+    "lockoff",
+    "dolly",
+    "orbit",
+    "tracking",
+    "crane"
+  ],
+  "frameTypes": [
+    "extreme-closeup",
+    "closeup",
+    "medium",
+    "full",
+    "wide"
+  ],
   "capabilities": {
     "director.mode": "offline-sandbox",
     "capture.frame": "png",
-    "capture.video": "avpro-movie-capture (present in project, wiring planned in M2)",
-    "fusion.multiplayer": "out-of-scope-for-v0 (see docs/03 authority lens)"
+    "capture.video": "frame-sequence-v1",
+    "fusion.multiplayer": "out-of-scope-for-v0 (see docs/03 authority lens)",
+    "capture.audio": "post-production"
   }
 }

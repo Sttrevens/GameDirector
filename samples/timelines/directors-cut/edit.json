@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "frameRate": 24,
+  "width": 1920,
+  "height": 1080,
+  "sources": {
+    "a": "take-01_the_audience/picture.mp4",
+    "b": "take-02_the_sound/picture.mp4",
+    "c": "take-03_keep_rolling-v2/picture.mp4"
+  },
+  "ranges": [
+    {
+      "source": "a",
+      "start": 0,
+      "end": 6,
+      "reason": "Hold the monster outside the close frame and approach the smiling streamer.",
+      "beat": "suspense"
+    },
+    {
+      "source": "a",
+      "start": 6,
+      "end": 10,
+      "reason": "Stay close for the promise of a solitary audience.",
+      "beat": "anticipation"
+    },
+    {
+      "source": "a",
+      "start": 10,
+      "end": 18,
+      "reason": "Reveal the scale difference and give the pride pose room to finish.",
+      "beat": "reveal"
+    },
+    {
+      "source": "b",
+      "start": 0,
+      "end": 5,
+      "reason": "A short orbit extends the pose into a theatrical entrance.",
+      "beat": "performance"
+    },
+    {
+      "source": "b",
+      "start": 5,
+      "end": 10,
+      "reason": "Cut to the speaker as static arrives; bring the sound source forward.",
+      "beat": "interruption"
+    },
+    {
+      "source": "b",
+      "start": 10,
+      "end": 14,
+      "reason": "Return to the streamer dancing for a reaction beat.",
+      "beat": "comic tension"
+    },
+    {
+      "source": "b",
+      "start": 14,
+      "end": 18,
+      "reason": "Widen before rage to preserve the spatial relationship.",
+      "beat": "escalation"
+    },
+    {
+      "source": "c",
+      "start": 0,
+      "end": 4,
+      "reason": "Push into the oversized performer as the score intensifies.",
+      "beat": "pressure"
+    },
+    {
+      "source": "c",
+      "start": 4,
+      "end": 7,
+      "reason": "Push toward the speaker through its bite and ominous pause, then cut into the hurricane.",
+      "beat": "rupture"
+    },
+    {
+      "source": "c",
+      "start": 7,
+      "end": 11,
+      "reason": "Give the hurricane an orbit and brief slow motion.",
+      "beat": "climax"
+    },
+    {
+      "source": "c",
+      "start": 11,
+      "end": 14,
+      "reason": "Cut to the dodge at the abrupt musical release.",
+      "beat": "escape"
+    },
+    {
+      "source": "c",
+      "start": 14,
+      "end": 18,
+      "reason": "Withdraw upward while the camera keeps rolling; leave room for the title.",
+      "beat": "afterimage"
+    }
+  ],
+  "grade": "eq=contrast=1.045:brightness=0.010:saturation=1.08:gamma=1.10,vignette=PI/5,drawbox=x=0:y=0:w=iw:h=104:color=black:t=fill,drawbox=x=0:y=ih-104:w=iw:h=104:color=black:t=fill",
+  "music": "assets/soundtrack.wav",
+  "musicVolume": 1.77827941,
+  "subtitles": "assets/titles.ass"
+}

@@ -1,0 +1,140 @@
+{
+  "game": "Sandring",
+  "gameVersion": "source-checkout",
+  "manifestVersion": "0.1",
+  "roles": [
+    {
+      "id": "legion",
+      "kind": "npc",
+      "defaultActor": "legion-body",
+      "presentAtStart": true
+    },
+    {
+      "id": "minotaur",
+      "kind": "monster",
+      "defaultActor": "minotaur-body",
+      "presentAtStart": true
+    }
+  ],
+  "actors": [
+    {
+      "id": "legion-body",
+      "clips": [
+        "idle",
+        "bow",
+        "nod",
+        "shake",
+        "roar",
+        "guard",
+        "strike",
+        "charge",
+        "cheer",
+        "down",
+        "clap",
+        "wave"
+      ]
+    },
+    {
+      "id": "minotaur-body",
+      "clips": [
+        "idle",
+        "bow",
+        "nod",
+        "shake",
+        "roar",
+        "guard",
+        "strike",
+        "charge",
+        "cheer",
+        "down",
+        "clap",
+        "wave"
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "wide",
+      "position": [
+        0,
+        2.2,
+        4.5
+      ]
+    },
+    {
+      "id": "legion-close",
+      "position": [
+        -0.5,
+        1.1,
+        1.1
+      ]
+    },
+    {
+      "id": "beast-close",
+      "position": [
+        0.5,
+        1.35,
+        1.1
+      ]
+    },
+    {
+      "id": "side",
+      "position": [
+        3,
+        1.5,
+        3.6
+      ]
+    },
+    {
+      "id": "near-legion",
+      "position": [
+        -0.7,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "near-beast",
+      "position": [
+        0.7,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "legion-start",
+      "position": [
+        -1.6,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "beast-start",
+      "position": [
+        1.6,
+        0,
+        0
+      ]
+    }
+  ],
+  "audio": [],
+  "shotTypes": [
+    "lockoff",
+    "dolly",
+    "tracking",
+    "orbit",
+    "crane"
+  ],
+  "frameTypes": [
+    "closeup",
+    "medium",
+    "full",
+    "wide"
+  ],
+  "capabilities": {
+    "director.mode": "offline-sandbox",
+    "actor.animation.fade": "cut-only",
+    "actor.spawn": "unsupported"
+  }
+}

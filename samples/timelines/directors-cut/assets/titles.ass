@@ -1,0 +1,22 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Whisper,Songti SC,44,&H00E8E6DC,&H00E8E6DC,&H60080808,&H80000000,0,0,0,0,100,100,3,0,1,1,0,2,160,160,142,1
+Style: Label,Helvetica Neue,24,&H00D3D6D8,&H00D3D6D8,&H60000000,&H80000000,0,0,0,0,100,100,6,0,1,0,0,8,140,140,132,1
+Style: Title,Songti SC,96,&H00E7EDFA,&H00E7EDFA,&H40080808,&H80000000,0,0,0,0,100,100,18,0,1,0,0,5,120,120,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.80,0:00:04.80,Label,,0,0,0,,{\fad(650,750)}CAM DOWN!  /  DIRECTOR'S CUT
+Dialogue: 0,0:00:06.50,0:00:09.60,Whisper,,0,0,0,,{\fad(350,450)}今晚，只有一个观众。
+Dialogue: 0,0:00:24.00,0:00:27.50,Whisper,,0,0,0,,{\fad(350,500)}直到，声音也来了。
+Dialogue: 0,0:00:47.30,0:00:49.70,Whisper,,0,0,0,,{\fad(150,250)}别停机。
+Dialogue: 1,0:00:50.30,0:00:54.00,Title,,0,0,0,,{\fad(650,650)\pos(520,455)}别停机
+Dialogue: 1,0:00:50.70,0:00:54.00,Label,,0,0,0,,{\fad(650,650)\pos(520,572)}KEEP ROLLING
+Dialogue: 1,0:00:51.10,0:00:54.00,Label,,0,0,0,,{\fad(650,650)\fs18\fsp3\pos(960,928)}A CAM DOWN! SHORT  ·  GAME DIRECTOR

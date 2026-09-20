@@ -1,0 +1,20 @@
+{
+  "name": "GameDirector.Unity.Tests",
+  "references": [
+    "GameDirector.Unity",
+    "GameDirector.Unity.TestFixtures",
+    "GameDirector.Unity.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GameDirector.Core.dll",
+    "Newtonsoft.Json.dll",
+    "nunit.framework.dll"
+  ]
+}

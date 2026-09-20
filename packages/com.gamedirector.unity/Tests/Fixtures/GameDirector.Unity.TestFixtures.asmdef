@@ -1,0 +1,15 @@
+{
+  "name": "GameDirector.Unity.TestFixtures",
+  "references": [
+    "GameDirector.Unity"
+  ],
+  "includePlatforms": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GameDirector.Core.dll"
+  ],
+  "autoReferenced": false
+}

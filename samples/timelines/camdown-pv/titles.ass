@@ -1,0 +1,33 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Hero,Songti SC,44,&H00F5F4EE,&H00FFFFFF,&H00201912,&H90000000,0,0,0,0,100,100,1,0,1,2,1,2,120,120,123,1
+Style: Crew,Songti SC,44,&H0094D8FF,&H00FFFFFF,&H00201912,&H90000000,0,0,0,0,100,100,1,0,1,2,1,2,120,120,123,1
+Style: Brand,Helvetica Neue,136,&H00EEEFEF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,3,0,1,0,0,5,80,80,0,1
+Style: Chinese,Songti SC,47,&H00D1D5D6,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,8,0,1,0,0,5,80,80,0,1
+Style: Small,Helvetica Neue,27,&H00A8AFB3,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,4,0,1,0,0,5,80,80,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 1,0:00:00.00,0:00:03.00,Small,,0,0,0,,{\an7\pos(144,110)\fs22\c&HDEDED8&\fad(150,150)}REC  /  001
+Dialogue: 1,0:00:42.00,0:00:44.00,Chinese,,0,0,0,,{\an8\pos(960,160)\fs40\fsp2\fad(200,200)}叫上朋友，把危险拍成节目。
+Dialogue: 0,0:00:44.00,0:00:48.00,Small,,0,0,0,,{\an7\pos(0,0)\p1\c&H120C09&\fad(300,0)}m 0 0 l 1920 0 1920 1080 0 1080
+Dialogue: 1,0:00:44.25,0:00:48.00,Brand,,0,0,0,,{\pos(960,445)\fad(350,300)\fscx102\fscy102\t(0,3400,\fscx100\fscy100)}CAM DOWN!
+Dialogue: 1,0:00:44.50,0:00:48.00,Chinese,,0,0,0,,{\pos(960,588)\fad(400,300)}直播圣体
+Dialogue: 1,0:00:44.70,0:00:48.00,Small,,0,0,0,,{\pos(960,737)\fad(500,300)}VOICE. FRIENDS. BAD DECISIONS.
+Dialogue: 1,0:00:44.40,0:00:48.00,Small,,0,0,0,,{\an7\pos(880,664)\p1\c&H4757D8&\fad(300,300)}m 0 0 l 160 0 160 3 0 3
+Dialogue: 1,0:00:00.52,0:00:01.79,Hero,,0,0,0,,{\fad(80,120)}开机。
+Dialogue: 1,0:00:03.52,0:00:05.53,Hero,,0,0,0,,{\fad(80,120)}你去夸它两句。
+Dialogue: 1,0:00:08.02,0:00:09.76,Crew,,0,0,0,,{\fad(80,120)}哥，真帅！
+Dialogue: 1,0:00:14.32,0:00:15.74,Hero,,0,0,0,,{\fad(80,120)}有了有了。
+Dialogue: 1,0:00:17.52,0:00:19.13,Crew,,0,0,0,,{\fad(80,120)}也就一般吧。
+Dialogue: 1,0:00:27.32,0:00:29.12,Hero,,0,0,0,,{\fad(80,120)}这条，爆了。
+Dialogue: 1,0:00:32.47,0:00:33.81,Hero,,0,0,0,,{\fad(80,120)}快跑！
+Dialogue: 1,0:00:38.42,0:00:39.82,Crew,,0,0,0,,{\fad(80,120)}拍到了吗？
+Dialogue: 1,0:00:40.17,0:00:41.47,Hero,,0,0,0,,{\fad(80,120)}拍到了。

@@ -19,14 +19,8 @@ namespace GameDirector.CDREBIRTH
     /// (tasks/scoring). Director mode must run with DM/LiveShow systems disabled
     /// or absent (dedicated sandbox scene), otherwise two directors fight.
     ///
-    /// TODO(M1 wiring, requires CDREBIRTH project + open Editor):
-    ///   1. Reference the game assemblies and resolve "hero" to the local
-    ///      PlayerMovement transform instead of a marker (fallback stays markers).
-    ///   2. Load BigGuai/SpeakerMonster prefabs from the project's PGC sources
-    ///      for SpawnRoleInstance (paths below are placeholders).
-    ///   3. Place DirectorLocationAnchor objects in a grimforest sandbox copy
-    ///      matching gf_gate / gf_stage / gf_cam_* ids in the manifest.
-    ///   4. M2: route capture through AVPro Movie Capture for video takes.
+    /// Asset references and scene registries bind actual game actors. Owned
+    /// actors are isolated before activation; capture uses the frame clock.
     /// </summary>
     public sealed class CdRebirthAdapter : GameDirectorAdapterBase
     {
@@ -44,8 +38,6 @@ namespace GameDirector.CDREBIRTH
 
         protected override Transform SpawnRoleInstance(string role, Vector3 pos, Quaternion rot)
         {
-            // v0 offline spawn: plain Instantiate. No Fusion runner exists in the
-            // sandbox scene, so nothing here is networked or needs StateAuthority.
             var prefab = role == "bigguai" ? bigGuaiPrefab
                        : role == "speaker" ? speakerMonsterPrefab
                        : null;
@@ -54,22 +46,21 @@ namespace GameDirector.CDREBIRTH
                 Debug.LogWarning($"[GameDirector.CDREBIRTH] no prefab bound for role '{role}'; spawn skipped");
                 return null;
             }
-            var instance = Instantiate(prefab, pos, rot);
-            // The timeline, not the game's AI, owns the performance: strip AI,
-            // input, networking behaviours and make physics kinematic.
-            PresentationMode.Apply(instance);
+            var instance = PresentationMode.CreateActor(prefab, pos, rot);
             return instance.transform;
         }
 
-        public override void PlayAudio(string audioId, float volume)
-        {
-            // TODO(M1): bind to the project's audio service / mixer groups.
-            Debug.Log($"[GameDirector.CDREBIRTH] audio.play {audioId} vol={volume} (audio service wiring pending)");
-        }
+        protected override GameObject SpawnPrefab(string role) => role == "bigguai" ? bigGuaiPrefab : role == "speaker" ? speakerMonsterPrefab : null;
 
-        public override void StopAudio(string audioId)
+        public override void Preflight(TimelineAsset asset)
         {
-            Debug.Log($"[GameDirector.CDREBIRTH] audio.stop {audioId} (audio service wiring pending)");
+            if (!gameObject.scene.path.StartsWith("Assets/Scenes/GameDirector/", System.StringComparison.Ordinal))
+                throw new System.InvalidOperationException("CDREBIRTH directing requires its dedicated offline sandbox scene");
+            // No Fusion dependency in the adapter package; inspect loaded runners by type.
+            foreach (var b in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>(true))
+                if (b != null && b.GetType().FullName == "Fusion.NetworkRunner")
+                    throw new System.InvalidOperationException("NetworkRunner present: offline directing refused");
+            base.Preflight(asset);
         }
     }
 }

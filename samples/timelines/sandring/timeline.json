@@ -1,0 +1,195 @@
+{
+  "version": "0.1",
+  "id": "sandring-first-director",
+  "title": "沙圈：鞠躬之后",
+  "cues": [
+    {
+      "t": 0,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "legion",
+        "frame": "wide",
+        "durationSeconds": 5,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "wide",
+        "to": "side"
+      }
+    },
+    {
+      "t": 0,
+      "type": "actor.face",
+      "role": "legion",
+      "headingTo": "minotaur"
+    },
+    {
+      "t": 0,
+      "type": "actor.face",
+      "role": "minotaur",
+      "headingTo": "legion"
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "idle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "minotaur",
+      "clip": "idle",
+      "fade": 0
+    },
+    {
+      "t": 5,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "legion",
+        "frame": "medium",
+        "durationSeconds": 4,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "legion-close"
+      }
+    },
+    {
+      "t": 5,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "bow",
+      "fade": 0
+    },
+    {
+      "t": 9,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "minotaur",
+        "frame": "medium",
+        "durationSeconds": 4,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "beast-close"
+      }
+    },
+    {
+      "t": 9,
+      "type": "actor.anim",
+      "role": "minotaur",
+      "clip": "roar",
+      "fade": 0
+    },
+    {
+      "t": 13,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "legion",
+        "frame": "full",
+        "durationSeconds": 6,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "side",
+        "to": "wide"
+      }
+    },
+    {
+      "t": 13,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "guard",
+      "fade": 0
+    },
+    {
+      "t": 13,
+      "type": "actor.anim",
+      "role": "minotaur",
+      "clip": "charge",
+      "fade": 0
+    },
+    {
+      "t": 13,
+      "type": "actor.move",
+      "role": "minotaur",
+      "to": "near-beast",
+      "speed": 0.6
+    },
+    {
+      "t": 19,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "minotaur",
+        "frame": "medium",
+        "durationSeconds": 4,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "beast-close"
+      }
+    },
+    {
+      "t": 19,
+      "type": "actor.anim",
+      "role": "minotaur",
+      "clip": "strike",
+      "fade": 0
+    },
+    {
+      "t": 23,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "legion",
+        "frame": "medium",
+        "durationSeconds": 4,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "legion-close"
+      }
+    },
+    {
+      "t": 23,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "down",
+      "fade": 0
+    },
+    {
+      "t": 27,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "minotaur",
+        "frame": "wide",
+        "durationSeconds": 7,
+        "fov": 48,
+        "ease": "inOut",
+        "from": "wide",
+        "to": "side"
+      }
+    },
+    {
+      "t": 27,
+      "type": "actor.anim",
+      "role": "minotaur",
+      "clip": "cheer",
+      "fade": 0
+    },
+    {
+      "t": 29,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "wave",
+      "fade": 0
+    },
+    {
+      "t": 33.9,
+      "type": "marker",
+      "label": "A bow, a challenge, a defeat, a stubborn wave."
+    }
+  ]
+}

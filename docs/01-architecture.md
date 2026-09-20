@@ -40,14 +40,14 @@ LLM ──④ gd play ──▶ 桥 ──▶ 游戏侧二次编译 ──▶ Ti
 LLM ──⑤ gd capture /status ──▶ 看画面、看事件流 ──▶ 回到 ② 改稿
 ```
 
-第 ④ 步游戏侧会**再编译一次**（不信任外部进程）。第 ⑤ 步是质量地板：没有"审片—改稿"闭环的 AI 导演是玩具。M2/M3 会把 ⑤ 升级为 AVPro 视频 take + 多 take 挑选（AI 剪片）。
+第 ④ 步游戏侧会**再编译一次**（不信任外部进程）。第 ⑤ 步是质量地板：没有"审片—改稿"闭环的 AI 导演是玩具。当前 `gd take` 把 ⑤ 升级为带身份和帧号的素材事务，`gd edit` 负责多 take 选段、声音和最终字幕。
 
 ## 关键不变量
 
 - **确定性**：同一时间轴 + 同一 dt 序列 ⇒ 同一事件序列（有单测锁定）。时间轴用非缩放时间驱动，慢动作 cue 不影响 cue 自身的时刻。
 - **显式恢复**：`world.timescale` 带 duration 时，编译器注入一条显式 restore cue。编译产物即完整事件清单，没有隐藏行为。
 - **编译期在场模拟**：编译器按顺序模拟 spawn/despawn，对"怪物还没出生就播动画"这类错误给 warning。`PresentAtStart=false` 的角色必须先 spawn。
-- **场景真名不出现在内核**：内核只见 role/location id；id→Transform 的解析全部在适配器侧（场景 marker 优先，manifest 坐标兜底）。
+- **场景真名不出现在内核**：内核只见 role/location id；id→Transform 的解析全部在适配器侧（运行前核对场景绑定，缺失即拒绝）。
 - **桥是 loopback-only 的录制工具**：默认只在 Editor play mode 起，release build 拒绝启动。
 
 ## 两个"导演"的边界（重要）
@@ -58,4 +58,24 @@ LLM ──⑤ gd capture /status ──▶ 看画面、看事件流 ──▶ �
 
 - 时间轴 seek / 倒放（M3 剪辑需要时再设计）
 - cue 的开放式扩展字段（用 `shot.params` 顶住，真不够再加 schema 版本 0.2）
-- 联机实拍（v1）、视频录制（M2，走 AVPro）、多机位同时渲染（M2+）
+- 联机实拍（v1）、引擎实时音频采集、多机位同时渲染
+
+## 0.2 foundation contracts
+
+The .NET Core owns capability validation and compiled cue order. Unity and Three own
+engine-specific rendering and visual lifecycles. Game adapters own role/animation
+bindings and custom source identity. `IsAnimationBound` and `PlayAnimation` form the
+Unity extension pair for procedural clips; the default implementation checks native
+Animator state. `IDirectorPresentationParticipant` supplies snapshot, preparation,
+clocked evaluation and restoration without running gameplay callbacks.
+
+The client owns durable take jobs, not engine state. It accepts frames only under a
+known take identity, journals their hashes and verifies the authoritative completion
+receipt before encoding. Recovery never combines two performances' pixels. The edit
+engine consumes verified media from either engine. Performance catalogs retain
+source-backed directing observations alongside the workflow; their structural validity
+cannot certify artistic meaning or the truth of a cited observation.
+
+See [measured foundation acceptance](08-foundation-hardening-2026-09-07.md) for current
+engines/platforms, installation evidence and limits. Engine extensibility, a successful
+capture and human visual acceptance remain distinct claims.

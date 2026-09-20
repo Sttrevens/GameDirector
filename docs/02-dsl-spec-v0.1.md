@@ -67,3 +67,12 @@
 - v0.1 只增不改：新语义 = 新 cue type 或新 ShotSpec 可选字段；不改旧字段含义。
 - 破坏式变更必须 bump `version` 并同步编译器 `SupportedVersion`。
 - `adapters/*/manifests/*.json` 与 `samples/timelines/*.json` 是契约资产：`SampleAssetTests` 锁定它们永远可解析、零 error 编译。
+
+
+## Production clarification (2026-09-06)
+
+- Compilation snapshots nested cue payloads without modifying authored data. Manifest IDs are unique and lists are closed vocabularies. Explicit null/empty endpoints, nonfinite numbers and undeclared clips are errors. Live playback treats absent-role warnings as non-executable plans.
+- Timescale is a presentation channel. A newer authored scale cancels an earlier pending restore, including equal-time boundaries. The adapter applies it uniformly to actor motion and animation; camera and edit beats stay in timeline seconds.
+- Optional session adapters receive begin / boundary-split advance / end. Exceptions produce `Failed`; each successful dispatch records authored `Time` separately from `DispatchedAt`.
+- Explicit camera anchors win over the `frame` label. With `from:current`, framing derives distance from subject bounds and lens; `params.distance` explicitly overrides it. `focalLengthMm` uses a 24mm sensor height and is mutually exclusive with `fov`. Optional camera parameters: `offsetX/Y/Z`, `toOffsetX/Y/Z`, `targetHeight`, `distance`, `endFov`, `pan`, `tilt`, `roll`, `shake`, `orbitDeg`. These are shot-relative artistic controls, not additional scene truth.
+- PNG capture is a silent-picture lane. Put soundtrack and sound effects on the edit timeline; frame-stepped takes reject live audio cues. Interactive playback supports actual bound AudioClips by id.

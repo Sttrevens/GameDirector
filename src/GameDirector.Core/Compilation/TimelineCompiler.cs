@@ -74,6 +74,8 @@ namespace GameDirector.Core.Compilation
             if (string.IsNullOrEmpty(asset.Id))
                 Error(result, EMissingId, -1, "timeline id is required");
 
+            ValidateManifest(result, manifest);
+            if (result.HasErrors) return result;
             var cues = asset.Cues ?? new List<Cue>();
             var compiled = new List<Cue>(cues.Count + 2);
             var present = new Dictionary<string, bool>(); // role -> currently present in scene
@@ -86,6 +88,7 @@ namespace GameDirector.Core.Compilation
             {
                 var c = cues[i];
                 if (c == null) { Error(result, EBadValue, i, "null cue"); continue; }
+                c = c.Snapshot();
                 c.SourceIndex = i;
                 c.Injected = false;
                 indexed.Add(c);
@@ -109,6 +112,10 @@ namespace GameDirector.Core.Compilation
                 {
                     case CueTypes.CameraShot:
                         ValidateShot(result, manifest, cue);
+                        if (cue.Shot != null) {
+                            RequireRolePresent(result, manifest, cue, cue.Shot.Subject, present);
+                            if (cue.Shot.LookAt != null) RequireRolePresent(result, manifest, cue, cue.Shot.LookAt, present);
+                        }
                         if (openShotEnd > cue.T + 1e-6)
                             Warn(result, WShotOverlap, cue.SourceIndex,
                                 "camera shot at t=" + cue.T + " cuts into the shot started at t=" + openShotT + " (window ends at " + openShotEnd + "; later shot wins)");
@@ -123,11 +130,14 @@ namespace GameDirector.Core.Compilation
                     case CueTypes.ActorSpawn:
                         RequireRole(result, manifest, cue, cue.Role);
                         RequireLocation(result, manifest, cue, cue.Location, "Location");
+                        if (cue.Role != null && present.TryGetValue(cue.Role, out var already) && already)
+                            Error(result, EBadValue, cue.SourceIndex, "role is already present; despawn before spawn");
+                        ValidateHeading(result, manifest, cue, false, present);
                         if (cue.Role != null && present.ContainsKey(cue.Role)) present[cue.Role] = true;
                         break;
 
                     case CueTypes.ActorDespawn:
-                        RequireRole(result, manifest, cue, cue.Role);
+                        RequireRolePresent(result, manifest, cue, cue.Role, present);
                         if (cue.Role != null && present.ContainsKey(cue.Role)) present[cue.Role] = false;
                         break;
 
@@ -138,22 +148,19 @@ namespace GameDirector.Core.Compilation
                     case CueTypes.ActorMove:
                         RequireRolePresent(result, manifest, cue, cue.Role, present);
                         RequireLocation(result, manifest, cue, cue.To, "To");
-                        if (cue.Speed <= 0) Error(result, EBadValue, cue.SourceIndex, "actor.move Speed must be > 0");
+                        if (!Finite(cue.Speed) || cue.Speed <= 0) Error(result, EBadValue, cue.SourceIndex, "actor.move Speed must be > 0");
+                        ValidateHeading(result, manifest, cue, false, present);
                         break;
 
                     case CueTypes.ActorFace:
                         RequireRolePresent(result, manifest, cue, cue.Role, present);
-                        if (cue.HeadingTo != null
-                            && manifest.FindRole(cue.HeadingTo) == null
-                            && manifest.FindLocation(cue.HeadingTo) == null)
-                            Error(result, EUnknownRole, cue.SourceIndex,
-                                "actor.face HeadingTo '" + cue.HeadingTo + "' is neither a role nor a location");
+                        ValidateHeading(result, manifest, cue, true, present);
                         break;
 
                     case CueTypes.AudioPlay:
                         if (manifest.FindAudio(cue.AudioId) == null)
                             Error(result, EUnknownAudio, cue.SourceIndex, "unknown audio id '" + cue.AudioId + "'");
-                        if (cue.Volume < 0f || cue.Volume > 1f)
+                        if (!Finite(cue.Volume) || cue.Volume < 0f || cue.Volume > 1f)
                             Error(result, EBadValue, cue.SourceIndex, "audio.play Volume must be in [0,1]");
                         break;
 
@@ -163,8 +170,8 @@ namespace GameDirector.Core.Compilation
                         break;
 
                     case CueTypes.WorldTimeScale:
-                        if (cue.Scale <= 0f) Error(result, EBadValue, cue.SourceIndex, "world.timescale Scale must be > 0");
-                        if (cue.Duration < 0) Error(result, EBadValue, cue.SourceIndex, "world.timescale Duration must be >= 0");
+                        if (!Finite(cue.Scale) || cue.Scale <= 0f || cue.Scale > 10f) Error(result, EBadValue, cue.SourceIndex, "world.timescale Scale must be > 0");
+                        if (!Finite(cue.Duration) || cue.Duration < 0 || !Finite(cue.T + cue.Duration)) Error(result, EBadValue, cue.SourceIndex, "world.timescale Duration must be >= 0");
                         break;
 
                     case CueTypes.Marker:
@@ -191,8 +198,12 @@ namespace GameDirector.Core.Compilation
                         SourceIndex = -1,
                         Injected = true
                     };
-                    compiled.Add(restore);
-                    if (restore.T > duration) duration = restore.T;
+                    // A newer authored scale owns the channel; its predecessor may
+                    // not restore over it, including an equal-time boundary.
+                    bool superseded = indexed.Exists(c => c != cue && c.Type == CueTypes.WorldTimeScale
+                        && (c.T > cue.T || (c.T == cue.T && c.SourceIndex > cue.SourceIndex)) && c.T <= restore.T);
+                    if (!superseded) compiled.Add(restore);
+                    if (!superseded && restore.T > duration) duration = restore.T;
                 }
             }
 
@@ -220,9 +231,9 @@ namespace GameDirector.Core.Compilation
             }
             var s = cue.Shot;
 
-            if (manifest.ShotTypes != null && manifest.ShotTypes.Count > 0 && !manifest.ShotTypes.Contains(s.Type))
+            if (!manifest.ShotTypes.Contains(s.Type))
                 Error(result, EUnknownShotType, cue.SourceIndex, "unknown shot type '" + s.Type + "' (manifest declares: " + string.Join("/", manifest.ShotTypes.ToArray()) + ")");
-            if (manifest.FrameTypes != null && manifest.FrameTypes.Count > 0 && !manifest.FrameTypes.Contains(s.Frame))
+            if (!manifest.FrameTypes.Contains(s.Frame))
                 Error(result, EUnknownFrameType, cue.SourceIndex, "unknown frame type '" + s.Frame + "' (manifest declares: " + string.Join("/", manifest.FrameTypes.ToArray()) + ")");
 
             if (string.IsNullOrEmpty(s.Subject))
@@ -234,17 +245,74 @@ namespace GameDirector.Core.Compilation
                 Error(result, EUnknownRole, cue.SourceIndex, "unknown lookAt role '" + s.LookAt + "'");
 
             RequireLocation(result, manifest, cue, s.From, "shot.from", allowCurrent: true);
-            if (s.Type != "lockoff" && s.Type != "orbit" && s.Type != "tracking")
+            // Whether a destination anchor is required is vocabulary semantics,
+            // not a per-callsite type list. Custom types declare their own.
+            if (ShotVocabulary.RequiresTarget(s.Type) == true)
                 RequireLocation(result, manifest, cue, s.To, "shot.to", allowCurrent: true);
 
-            if (s.DurationSeconds < 0)
+            if (!Finite(s.DurationSeconds) || s.DurationSeconds < 0 || !Finite(cue.T + s.DurationSeconds))
                 Error(result, EBadValue, cue.SourceIndex, "shot durationSeconds must be >= 0");
-            if (s.Fov.HasValue && (s.Fov.Value < 5f || s.Fov.Value > 170f))
+            if (s.Fov.HasValue && (!Finite(s.Fov.Value) || s.Fov.Value < 5f || s.Fov.Value > 170f))
                 Error(result, EBadValue, cue.SourceIndex, "shot fov out of range [5,170]: " + s.Fov.Value);
+            if (s.FocalLengthMm.HasValue && (!Finite(s.FocalLengthMm.Value) || s.FocalLengthMm.Value <= 0))
+                Error(result, EBadValue, cue.SourceIndex, "focalLengthMm must be finite and positive");
+            if (s.Fov.HasValue && s.FocalLengthMm.HasValue)
+                Error(result, EBadValue, cue.SourceIndex, "choose fov or focalLengthMm, not both");
+            if (!ShotVocabulary.ValidEase(s.Ease))
+                Error(result, EBadValue, cue.SourceIndex, "unknown easing");
+            if (s.Params != null) foreach (var pair in s.Params)
+                if (!Finite(pair.Value)) Error(result, EBadValue, cue.SourceIndex, "shot parameters must be finite");
+
+        }
+
+        private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
+
+        private static void ValidateHeading(CompileResult r, CapabilityManifest m, Cue c, bool required, Dictionary<string, bool> present)
+        {
+            if (string.IsNullOrWhiteSpace(c.HeadingTo)) {
+                if (required) Error(r, EBadValue, c.SourceIndex, "headingTo is required");
+            } else if (m.FindRole(c.HeadingTo) == null && m.FindLocation(c.HeadingTo) == null)
+                Error(r, EUnknownLocation, c.SourceIndex, "unknown headingTo '" + c.HeadingTo + "'");
+            else if (m.FindRole(c.HeadingTo) != null) RequireRolePresent(r, m, c, c.HeadingTo, present);
+        }
+
+        private static void ValidateManifest(CompileResult r, CapabilityManifest m)
+        {
+            if (m.ManifestVersion != SupportedVersion) Error(r, EUnsupportedVersion, -1, "unsupported manifest version");
+            if (m.Roles == null || m.Actors == null || m.Locations == null || m.Audio == null || m.ShotTypes == null || m.FrameTypes == null) {
+                Error(r, EBadValue, -1, "manifest collections must not be null"); return;
+            }
+            ValidateIds(r, m.Roles.ConvertAll(x => x?.Id), "role");
+            ValidateIds(r, m.Actors.ConvertAll(x => x?.Id), "actor");
+            ValidateIds(r, m.Locations.ConvertAll(x => x?.Id), "location");
+            ValidateIds(r, m.Audio.ConvertAll(x => x?.Id), "audio");
+            ValidateIds(r, m.ShotTypes, "shot type");
+            ValidateIds(r, m.FrameTypes, "frame type");
+            if (r.HasErrors) return;
+            foreach (var role in m.Roles)
+                if (m.FindActor(role.DefaultActor) == null) Error(r, EBadValue, -1, "role '" + role.Id + "' has no declared actor");
+            foreach (var a in m.Actors) {
+                if (a.Clips == null) Error(r, EBadValue, -1, "clips must not be null");
+                else ValidateIds(r, a.Clips, "clip on " + a.Id);
+            }
+            foreach (var loc in m.Locations) {
+                if (loc.Id == CurrentKeyword) Error(r, EBadValue, -1, "current is a reserved location");
+                if (loc.Position != null && (loc.Position.Length != 3 || Array.Exists(loc.Position, v => !Finite(v))))
+                    Error(r, EBadValue, -1, "location position must be three finite numbers");
+                if (!Finite(loc.HeadingDeg)) Error(r, EBadValue, -1, "heading must be finite");
+            }
+        }
+
+        private static void ValidateIds(CompileResult r, List<string> ids, string kind)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var id in ids) if (string.IsNullOrWhiteSpace(id) || !seen.Add(id))
+                Error(r, EBadValue, -1, "empty or duplicate " + kind + " id");
         }
 
         private static void ValidateAnim(CompileResult result, CapabilityManifest manifest, Cue cue, Dictionary<string, bool> present)
         {
+            if (!Finite(cue.Fade) || cue.Fade < 0) Error(result, EBadValue, cue.SourceIndex, "animation fade must be finite and >= 0 seconds");
             var role = RequireRolePresent(result, manifest, cue, cue.Role, present);
             if (role == null) return;
             if (string.IsNullOrEmpty(cue.Clip))
@@ -253,9 +321,9 @@ namespace GameDirector.Core.Compilation
                 return;
             }
             var actor = manifest.FindActor(role.DefaultActor);
-            if (actor != null && actor.Clips != null && actor.Clips.Count > 0 && !actor.Clips.Contains(cue.Clip))
+            if (actor == null || actor.Clips == null || !actor.Clips.Contains(cue.Clip))
                 Error(result, EUnknownClip, cue.SourceIndex,
-                    "clip '" + cue.Clip + "' is not declared on actor '" + actor.Id + "' (declares " + actor.Clips.Count + " clips)");
+                    "clip '" + cue.Clip + "' is not declared on actor '" + role.DefaultActor + "'");
         }
 
         private static RoleDescriptor RequireRole(CompileResult result, CapabilityManifest manifest, Cue cue, string roleId)
@@ -284,8 +352,7 @@ namespace GameDirector.Core.Compilation
         {
             if (string.IsNullOrEmpty(locationId))
             {
-                if (!allowCurrent)
-                    Error(result, EUnknownLocation, cue.SourceIndex, cue.Type + " requires " + field);
+                Error(result, EUnknownLocation, cue.SourceIndex, cue.Type + " requires " + field);
                 return;
             }
             if (allowCurrent && locationId == CurrentKeyword) return;

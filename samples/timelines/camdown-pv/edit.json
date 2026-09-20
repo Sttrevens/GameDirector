@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "frameRate": 24,
+  "width": 1920,
+  "height": 1080,
+  "sources": {
+    "pv": "take-final/picture.mp4"
+  },
+  "ranges": [
+    {
+      "source": "pv",
+      "start": 0,
+      "end": 3,
+      "reason": "Establish the physical camera before implying filming."
+    },
+    {
+      "source": "pv",
+      "start": 3,
+      "end": 6,
+      "reason": "Show both friends and the monster in one space."
+    },
+    {
+      "source": "pv",
+      "start": 6,
+      "end": 10,
+      "reason": "Partner approaches in an uninterrupted walk."
+    },
+    {
+      "source": "pv",
+      "start": 10,
+      "end": 14,
+      "reason": "A compliment earns an extravagant pose."
+    },
+    {
+      "source": "pv",
+      "start": 14,
+      "end": 17,
+      "reason": "Camera insert makes the filming goal tangible."
+    },
+    {
+      "source": "pv",
+      "start": 17,
+      "end": 20,
+      "reason": "The partner turns the compliment into a taunt."
+    },
+    {
+      "source": "pv",
+      "start": 20,
+      "end": 23,
+      "reason": "Front reaction gives the insult time to land."
+    },
+    {
+      "source": "pv",
+      "start": 23,
+      "end": 27,
+      "reason": "Reveal the cost of provoking the monster."
+    },
+    {
+      "source": "pv",
+      "start": 27,
+      "end": 29,
+      "reason": "Cameraman recognises the danger."
+    },
+    {
+      "source": "pv",
+      "start": 29,
+      "end": 33,
+      "reason": "Let the hurricane complete before escape."
+    },
+    {
+      "source": "pv",
+      "start": 33,
+      "end": 38,
+      "reason": "Keep both friends and the camera visible during escape."
+    },
+    {
+      "source": "pv",
+      "start": 38,
+      "end": 42,
+      "reason": "The shot is safe; release tension with the exchange."
+    },
+    {
+      "source": "pv",
+      "start": 42,
+      "end": 48,
+      "reason": "Pull away, then give the game title a clean four-second end card."
+    }
+  ],
+  "grade": "eq=contrast=1.055:brightness=0.014:saturation=1.10:gamma=1.16,vignette=PI/6,drawbox=x=0:y=0:w=iw:h=82:color=black:t=fill,drawbox=x=0:y=ih-82:w=iw:h=82:color=black:t=fill",
+  "music": "assets/mastered.wav",
+  "musicVolume": 1,
+  "subtitles": "assets/titles.ass"
+}

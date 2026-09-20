@@ -1,0 +1,6 @@
+{
+  "name": "GameDirector.Unity.Editor",
+  "references": ["GameDirector.Unity"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

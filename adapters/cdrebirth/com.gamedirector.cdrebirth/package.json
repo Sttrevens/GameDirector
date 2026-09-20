@@ -1,11 +1,11 @@
 {
   "name": "com.gamedirector.cdrebirth",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.1",
   "displayName": "GameDirector CDREBIRTH Adapter",
-  "description": "CDREBIRTH-specific GameDirector adapter (L3): role binding to PlayerMovement/BigGuai/SpeakerMonster, offline director-sandbox spawn, manifest provider, AVPro Movie Capture hookup (M2). Referenced by the CDREBIRTH project as a local package — source of truth lives in the GameDirector repo.",
+  "description": "CDREBIRTH-specific GameDirector adapter (L3): role binding to PlayerMovement/BigGuai/SpeakerMonster, offline director-sandbox spawn, manifest provider, AVPro Movie Capture hookup (M2). Referenced by the CDREBIRTH project as a local package \u2014 source of truth lives in the GameDirector repo.",
   "unity": "2022.3",
   "license": "Proprietary",
   "dependencies": {
-    "com.gamedirector.unity": "0.1.0"
+    "com.gamedirector.unity": "0.2.0-alpha.1"
   }
 }

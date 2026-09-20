@@ -1,0 +1,575 @@
+{
+  "version": "0.1",
+  "id": "camdown_live_cinematic_pv",
+  "cues": [
+    {
+      "t": 0,
+      "type": "actor.spawn",
+      "role": "bigguai",
+      "location": "pv_monster",
+      "headingTo": "hero"
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Idle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "PV_CameraIdle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Idle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "camera",
+        "frame": "full",
+        "from": "pv_lens",
+        "fov": 36,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "toOffsetX": 1.1,
+          "toOffsetY": 1.7,
+          "toOffsetZ": 2.4
+        },
+        "to": "pv_lens"
+      }
+    },
+    {
+      "t": 0,
+      "type": "marker",
+      "label": "A real camera, a pair of friends, a very bad idea."
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "hero_face",
+      "clip": "Idle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "crew_face",
+      "clip": "Idle",
+      "fade": 0
+    },
+    {
+      "t": 3,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "hero",
+        "frame": "full",
+        "from": "pv_lens",
+        "to": "pv_lens",
+        "fov": 44,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.45,
+          "offsetX": 0.9,
+          "offsetY": 0.7,
+          "offsetZ": 1.45,
+          "toOffsetX": 1,
+          "toOffsetY": 0.75,
+          "toOffsetZ": 1.3
+        }
+      }
+    },
+    {
+      "t": 6,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "pv_front",
+        "fov": 46,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.8,
+          "offsetX": 0,
+          "offsetY": 0,
+          "pan": 0
+        }
+      }
+    },
+    {
+      "t": 6,
+      "type": "actor.face",
+      "role": "hero",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 6,
+      "type": "actor.face",
+      "role": "crew",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 9,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "crew",
+        "frame": "full",
+        "from": "pv_crew_close",
+        "fov": 44,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.4,
+          "offsetX": -0.3,
+          "offsetY": 0.25,
+          "offsetZ": 4.5
+        }
+      }
+    },
+    {
+      "t": 9,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Walk",
+      "fade": 0.18
+    },
+    {
+      "t": 9,
+      "type": "actor.move",
+      "role": "crew",
+      "to": "pv_crew_mark",
+      "speed": 0.8
+    },
+    {
+      "t": 12.05,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Idle",
+      "fade": 0.18
+    },
+    {
+      "t": 12.05,
+      "type": "actor.face",
+      "role": "crew",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 13,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "pv_monster_front",
+        "fov": 46,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 2.6,
+          "toOffsetX": -0.9,
+          "toOffsetY": 0.3,
+          "toOffsetZ": 1.1,
+          "offsetX": -1.5,
+          "offsetZ": 1.5
+        },
+        "to": "pv_monster_front"
+      }
+    },
+    {
+      "t": 13,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "ConfidencePose",
+      "fade": 0.18
+    },
+    {
+      "t": 17,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "camera",
+        "frame": "full",
+        "from": "pv_lens",
+        "fov": 46,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "toOffsetX": 0.5,
+          "toOffsetY": 0.55,
+          "toOffsetZ": 0.8,
+          "offsetZ": 0.45,
+          "offsetY": 0.35
+        },
+        "to": "pv_lens"
+      }
+    },
+    {
+      "t": 20,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "crew",
+        "frame": "full",
+        "from": "pv_crew_close",
+        "fov": 40,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.4,
+          "offsetX": -1.8,
+          "offsetY": 0.15,
+          "offsetZ": 4.8,
+          "toOffsetX": -1.7,
+          "toOffsetY": 0.25,
+          "toOffsetZ": 4.3
+        },
+        "to": "pv_crew_close"
+      }
+    },
+    {
+      "t": 20,
+      "type": "actor.face",
+      "role": "crew",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 20,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Idle",
+      "fade": 0.12
+    },
+    {
+      "t": 20,
+      "type": "marker",
+      "label": "A viewer eggs them on. The partner directs an insult at the monster."
+    },
+    {
+      "t": 23,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "pv_side",
+        "fov": 36,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 3.1,
+          "toOffsetZ": 1,
+          "offsetX": -2.8,
+          "offsetY": 1.1,
+          "offsetZ": 0.5,
+          "toOffsetX": -2.8,
+          "toOffsetY": 1.1
+        },
+        "to": "pv_side"
+      }
+    },
+    {
+      "t": 23,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Irritated",
+      "fade": 0.18
+    },
+    {
+      "t": 23,
+      "type": "actor.face",
+      "role": "bigguai",
+      "headingTo": "crew"
+    },
+    {
+      "t": 23,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Idle",
+      "fade": 0.18
+    },
+    {
+      "t": 23,
+      "type": "actor.face",
+      "role": "crew",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 26,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "pv_side",
+        "fov": 50,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 2.2,
+          "offsetY": 0.3,
+          "endFov": 49,
+          "shake": 0.2,
+          "offsetX": -2,
+          "offsetZ": -1,
+          "toOffsetX": -0.3,
+          "toOffsetY": 0.2,
+          "toOffsetZ": -3
+        },
+        "to": "pv_side"
+      }
+    },
+    {
+      "t": 26,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "RageTriggered",
+      "fade": 0.18
+    },
+    {
+      "t": 28,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "RageExpose",
+      "fade": 0.18
+    },
+    {
+      "t": 30,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "hero",
+        "frame": "full",
+        "from": "pv_lens",
+        "fov": 42,
+        "durationSeconds": 2,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.6,
+          "offsetZ": 1.2,
+          "offsetX": 1,
+          "offsetY": 0.7
+        }
+      }
+    },
+    {
+      "t": 32,
+      "type": "camera.shot",
+      "shot": {
+        "type": "orbit",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "pv_side",
+        "fov": 55,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 2,
+          "orbitDeg": 20,
+          "shake": 0.8,
+          "offsetX": 0,
+          "offsetY": 0.4
+        }
+      }
+    },
+    {
+      "t": 32,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Hurricane",
+      "fade": 0.18
+    },
+    {
+      "t": 32,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "Dodge",
+      "fade": 0.1
+    },
+    {
+      "t": 32,
+      "type": "marker",
+      "label": "The performance turns dangerous."
+    },
+    {
+      "t": 36,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "hero",
+        "frame": "full",
+        "from": "pv_end_front",
+        "fov": 52,
+        "durationSeconds": 5,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.4,
+          "offsetY": 1.5,
+          "shake": 0.8,
+          "roll": -2,
+          "pan": 8,
+          "offsetX": 6,
+          "offsetZ": -3,
+          "toOffsetX": 7,
+          "toOffsetY": 1.8,
+          "toOffsetZ": -4
+        },
+        "to": "pv_end_front"
+      }
+    },
+    {
+      "t": 36,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "PV_CameraRun",
+      "fade": 0.1
+    },
+    {
+      "t": 36,
+      "type": "actor.move",
+      "role": "hero",
+      "to": "pv_escape_hero",
+      "speed": 1.8
+    },
+    {
+      "t": 36,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Run",
+      "fade": 0.1
+    },
+    {
+      "t": 36,
+      "type": "actor.move",
+      "role": "crew",
+      "to": "pv_escape_crew",
+      "speed": 2.25
+    },
+    {
+      "t": 36,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Run",
+      "fade": 0.1
+    },
+    {
+      "t": 36,
+      "type": "actor.move",
+      "role": "bigguai",
+      "to": "pv_monster_chase",
+      "speed": 1.15
+    },
+    {
+      "t": 39.2,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "PV_CameraIdle",
+      "fade": 0.18
+    },
+    {
+      "t": 39.2,
+      "type": "actor.face",
+      "role": "hero",
+      "headingTo": "bigguai"
+    },
+    {
+      "t": 39.7,
+      "type": "actor.anim",
+      "role": "crew",
+      "clip": "PV_Idle",
+      "fade": 0.18
+    },
+    {
+      "t": 39.7,
+      "type": "actor.face",
+      "role": "crew",
+      "headingTo": "hero"
+    },
+    {
+      "t": 40.6,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Idle",
+      "fade": 0.18
+    },
+    {
+      "t": 40.6,
+      "type": "actor.face",
+      "role": "bigguai",
+      "headingTo": "hero"
+    },
+    {
+      "t": 41,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "hero",
+        "frame": "full",
+        "from": "pv_end_front",
+        "fov": 46,
+        "durationSeconds": 6,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.5,
+          "toOffsetX": 5,
+          "toOffsetY": 0.2,
+          "toOffsetZ": 5,
+          "offsetX": 6,
+          "offsetZ": 5,
+          "offsetY": 0.1
+        },
+        "to": "pv_end_front"
+      }
+    },
+    {
+      "t": 41,
+      "type": "actor.face",
+      "role": "hero",
+      "headingTo": "crew"
+    },
+    {
+      "t": 47,
+      "type": "camera.shot",
+      "shot": {
+        "type": "crane",
+        "subject": "hero",
+        "frame": "full",
+        "from": "pv_end_front",
+        "fov": 50,
+        "durationSeconds": 7,
+        "ease": "inOut",
+        "params": {
+          "targetHeight": 1.3,
+          "pan": 8,
+          "offsetX": 5,
+          "offsetZ": 5,
+          "offsetY": 0.2,
+          "toOffsetX": 5,
+          "toOffsetZ": 5,
+          "toOffsetY": 0
+        },
+        "to": "pv_end_high"
+      }
+    },
+    {
+      "t": 47,
+      "type": "marker",
+      "label": "The audience is still watching. Their reply completes the scene."
+    }
+  ],
+  "title": "CAM DOWN! — 观众还在看"
+}

@@ -1,0 +1,25 @@
+{
+  "version": "0.1",
+  "id": "sandring-scout",
+  "title": "\u6c99\u5708\uff1a\u97a0\u8eac\u4e4b\u540e",
+  "cues": [
+    {
+      "t": 0,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "legion",
+        "frame": "full",
+        "from": "wide",
+        "durationSeconds": 2
+      }
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "legion",
+      "clip": "wave",
+      "fade": 0
+    }
+  ]
+}

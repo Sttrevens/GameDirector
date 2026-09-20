@@ -36,7 +36,7 @@
     { "t": 16.0, "type": "marker", "label": "act3_slowmo_hurricane" },
 
     { "t": 20.0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "hero", "frame": "closeup", "from": "gf_cam_low", "durationSeconds": 3.0, "fov": 28.0, "ease": "inOut", "lookAt": "bigguai" } },
-    { "t": 20.5, "type": "actor.anim", "role": "hero", "clip": "Aiming", "fade": 0.25 },
+    { "t": 20.5, "type": "actor.anim", "role": "hero", "clip": "IKAim", "fade": 0.25 },
     { "t": 20.0, "type": "marker", "label": "act3_hero_closeup" },
 
     { "t": 23.0, "type": "audio.stop", "audioId": "bgm_dark_forest" },

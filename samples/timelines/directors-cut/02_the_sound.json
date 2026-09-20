@@ -1,0 +1,153 @@
+{
+  "version": "0.1",
+  "id": "02_the_sound",
+  "cues": [
+    {
+      "t": 0,
+      "type": "actor.spawn",
+      "role": "bigguai",
+      "location": "gf_gate",
+      "headingTo": "gf_cam_low"
+    },
+    {
+      "t": 0,
+      "type": "actor.spawn",
+      "role": "speaker",
+      "location": "gf_stage",
+      "headingTo": "gf_cam_low"
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "IKIdle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "ConfidencePose",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "Idle",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "camera.shot",
+      "shot": {
+        "type": "orbit",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "gf_cam_low",
+        "fov": 48,
+        "durationSeconds": 5,
+        "ease": "inOut",
+        "params": {
+          "orbitDeg": -18,
+          "targetHeight": 2.5,
+          "offsetY": 0.6,
+          "offsetX": -4,
+          "offsetZ": 1
+        }
+      }
+    },
+    {
+      "t": 3,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "Hip Hop Dancing",
+      "fade": 0.2
+    },
+    {
+      "t": 5,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "speaker",
+        "frame": "full",
+        "from": "sc_north_stage",
+        "fov": 36,
+        "durationSeconds": 5,
+        "ease": "inOut",
+        "params": {
+          "offsetY": -0.2,
+          "offsetZ": 1,
+          "toOffsetX": 0.7,
+          "toOffsetY": 0.1,
+          "toOffsetZ": 3.7,
+          "targetHeight": 1.2
+        },
+        "to": "sc_north_stage"
+      }
+    },
+    {
+      "t": 5,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "Speaking",
+      "fade": 0.1
+    },
+    {
+      "t": 5,
+      "type": "marker",
+      "label": "The speaker joins before anybody asks"
+    },
+    {
+      "t": 10,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "hero",
+        "frame": "full",
+        "from": "gf_cam_low",
+        "fov": 35,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "offsetX": -2.8,
+          "offsetY": 0.3,
+          "offsetZ": 3.2,
+          "targetHeight": 1.1
+        }
+      }
+    },
+    {
+      "t": 14,
+      "type": "camera.shot",
+      "shot": {
+        "type": "orbit",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "gf_cam_low",
+        "fov": 50,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "orbitDeg": 14,
+          "targetHeight": 2.2,
+          "offsetY": 0.7
+        }
+      }
+    },
+    {
+      "t": 14,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "RageTriggered",
+      "fade": 0.15
+    },
+    {
+      "t": 15,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "BiteAttack",
+      "fade": 0.1
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "manifestSha256": "d12a829b007f46efe28b06a77e1f7859d6cf14c674c9eeba1a270c599bdbf494",
+  "performances": [
+    {
+      "actor": "bigguai",
+      "clip": "ConfidencePose",
+      "meaning": "抬头展示身体、摆出自信姿态",
+      "usefulFor": [
+        "被夸后的得意反应",
+        "主动向镜头展示"
+      ],
+      "constraints": [
+        "这里记录导演观察与用途；播放动画不代表真实 Voice Talk 或联机状态已成立。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "CDREBIRTH/Docs/ProjectPulse/README.md#Current-Foreground-Slice"
+        },
+        {
+          "kind": "observation",
+          "source": "GameDirector/captures/edit/pv/live-cut/delivery-v2/final.mp4; sha256=1d391f73b2628aefc11b338ae02867ab06e8d88cbec643ef142cc390cad78a8f",
+          "start": 13,
+          "end": 17
+        }
+      ]
+    },
+    {
+      "actor": "bigguai",
+      "clip": "RageExpose",
+      "meaning": "身体和动作转为愤怒、暴露式反应",
+      "usefulFor": [
+        "被戳中痛处后的失控起点"
+      ],
+      "constraints": [
+        "这里记录导演观察与用途；播放动画不代表真实 Voice Talk 或联机状态已成立。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "CDREBIRTH/Docs/ProjectPulse/README.md#Current-Foreground-Slice"
+        },
+        {
+          "kind": "observation",
+          "source": "GameDirector/captures/edit/pv/live-cut/delivery-v2/final.mp4; sha256=1d391f73b2628aefc11b338ae02867ab06e8d88cbec643ef142cc390cad78a8f",
+          "start": 23,
+          "end": 26
+        }
+      ]
+    },
+    {
+      "actor": "bigguai",
+      "clip": "Hurricane",
+      "meaning": "旋转式的大幅身体表演",
+      "usefulFor": [
+        "愤怒升级",
+        "迫使同伴逃离的视觉高潮"
+      ],
+      "constraints": [
+        "这里记录导演观察与用途；播放动画不代表真实 Voice Talk 或联机状态已成立。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "CDREBIRTH/Docs/ProjectPulse/README.md#Current-Foreground-Slice"
+        },
+        {
+          "kind": "observation",
+          "source": "GameDirector/captures/edit/pv/live-cut/delivery-v2/final.mp4; sha256=1d391f73b2628aefc11b338ae02867ab06e8d88cbec643ef142cc390cad78a8f",
+          "start": 32,
+          "end": 36
+        }
+      ]
+    }
+  ]
+}

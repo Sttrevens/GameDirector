@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "gamedirector.client": {
+        "type": "Project",
+        "dependencies": {
+          "GameDirector.Core": "[0.2.0-alpha.1, )"
+        }
+      },
+      "gamedirector.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

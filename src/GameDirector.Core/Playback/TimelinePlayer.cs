@@ -5,12 +5,13 @@ using GameDirector.Core.Dsl;
 
 namespace GameDirector.Core.Playback
 {
-    public enum PlayerState { Idle, Playing, Paused, Finished, Stopped }
+    public enum PlayerState { Idle, Playing, Paused, Finished, Stopped, Failed }
 
     /// <summary>One dispatched event, recorded for logs, tests, and the review loop.</summary>
     public struct DirectorEvent
     {
-        public double Time;        // timeline time when dispatched
+        public double Time;
+        public double DispatchedAt;        // timeline time when dispatched
         public int CueIndex;       // authored source index, -1 for injected cues
         public string Type;
         public string Summary;
@@ -31,6 +32,9 @@ namespace GameDirector.Core.Playback
         private readonly List<DirectorEvent> _events = new List<DirectorEvent>();
         private int _nextCue;
         private double _time;
+        private bool _ownsSession;
+        public string Failure { get; private set; }
+        private IDirectorSessionAdapter Session => _adapter as IDirectorSessionAdapter;
 
         public PlayerState State { get; private set; } = PlayerState.Idle;
         public double Time => _time;
@@ -47,11 +51,19 @@ namespace GameDirector.Core.Playback
         {
             if (State == PlayerState.Playing) return;
             if (State == PlayerState.Paused) { State = PlayerState.Playing; return; }
+            EndSession();
+            _ownsSession = true;
+            try { Session?.BeginSession(); }
+            catch (Exception ex) { Fail(ex); return; }
+            Failure = null;
             _nextCue = 0;
             _time = 0;
             _events.Clear();
             State = PlayerState.Playing;
-            DispatchDue(); // cues at t=0 fire immediately
+            try {
+                DispatchDue(); // cues at t=0 fire immediately
+                Session?.AdvancePresentation(0, 0);
+            } catch (Exception ex) { Fail(ex); }
         }
 
         public void Pause() { if (State == PlayerState.Playing) State = PlayerState.Paused; }
@@ -61,6 +73,7 @@ namespace GameDirector.Core.Playback
         {
             State = PlayerState.Stopped;
             _nextCue = _timeline.OrderedCues.Count;
+            EndSession();
         }
 
         /// <summary>Advance by dt seconds (caller-chosen; use unscaled time in engines).</summary>
@@ -68,16 +81,49 @@ namespace GameDirector.Core.Playback
         {
             if (State != PlayerState.Playing) return;
             if (dt < 0 || double.IsNaN(dt) || double.IsInfinity(dt)) return;
-            _time += dt;
-            DispatchDue();
-            if (State == PlayerState.Playing && _nextCue >= _timeline.OrderedCues.Count && _time >= _timeline.Duration)
-                State = PlayerState.Finished;
+            try
+            {
+                double target = Math.Min(_timeline.Duration, _time + dt);
+                while (_nextCue < _timeline.OrderedCues.Count && _timeline.OrderedCues[_nextCue].T <= target + 1e-9)
+                {
+                    double boundary = _timeline.OrderedCues[_nextCue].T;
+                    Advance(Math.Max(_time, boundary));
+                    DispatchDue();
+                }
+                Advance(target);
+                if (_nextCue >= _timeline.OrderedCues.Count && _time >= _timeline.Duration) {
+                    State = PlayerState.Finished;
+                    EndSession();
+                }
+            } catch (Exception ex) { Fail(ex); }
+        }
+
+        private void Advance(double target)
+        {
+            double delta = Math.Max(0, target - _time);
+            _time = target;
+            Session?.AdvancePresentation(delta, _time);
+        }
+
+        private void EndSession()
+        {
+            if (!_ownsSession) return;
+            _ownsSession = false;
+            try { Session?.EndSession(); }
+            catch (Exception ex) { Failure = ex.Message; State = PlayerState.Failed; }
+        }
+
+        private void Fail(Exception ex)
+        {
+            Failure = ex.Message;
+            State = PlayerState.Failed;
+            EndSession();
         }
 
         private void DispatchDue()
         {
             var cues = _timeline.OrderedCues;
-            while (_nextCue < cues.Count && cues[_nextCue].T <= _time)
+            while (_nextCue < cues.Count && cues[_nextCue].T <= _time + 1e-9)
             {
                 Dispatch(cues[_nextCue]);
                 _nextCue++;
@@ -133,7 +179,7 @@ namespace GameDirector.Core.Playback
                     summary = "ignored unknown cue " + cue.Type;
                     break;
             }
-            _events.Add(new DirectorEvent { Time = _time, CueIndex = cue.SourceIndex, Type = cue.Type, Summary = summary });
+            _events.Add(new DirectorEvent { Time = cue.T, DispatchedAt = _time, CueIndex = cue.SourceIndex, Type = cue.Type, Summary = summary });
         }
     }
 }

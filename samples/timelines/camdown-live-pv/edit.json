@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "frameRate": 24,
+  "width": 1920,
+  "height": 1080,
+  "sources": {
+    "pv": "take-final/picture.mp4"
+  },
+  "ranges": [
+    {
+      "source": "pv",
+      "start": 0,
+      "end": 3,
+      "reason": "A physical camera goes live."
+    },
+    {
+      "source": "pv",
+      "start": 3,
+      "end": 6,
+      "reason": "The streamer addresses viewers; they answer and suggest a stunt."
+    },
+    {
+      "source": "pv",
+      "start": 6,
+      "end": 9,
+      "reason": "Both friends acknowledge the audience request."
+    },
+    {
+      "source": "pv",
+      "start": 9,
+      "end": 13,
+      "reason": "The partner flatters the exact monster."
+    },
+    {
+      "source": "pv",
+      "start": 13,
+      "end": 17,
+      "reason": "The monster poses; viewers immediately react."
+    },
+    {
+      "source": "pv",
+      "start": 17,
+      "end": 20,
+      "reason": "The cameraman acknowledges a viewer egging them on."
+    },
+    {
+      "source": "pv",
+      "start": 20,
+      "end": 23,
+      "reason": "The partner changes from praise to a personal insult."
+    },
+    {
+      "source": "pv",
+      "start": 23,
+      "end": 26,
+      "reason": "Hold the monster reaction after the negative line."
+    },
+    {
+      "source": "pv",
+      "start": 26,
+      "end": 30,
+      "reason": "Emotion builds into danger."
+    },
+    {
+      "source": "pv",
+      "start": 30,
+      "end": 32,
+      "reason": "Cameraman regrets the words while still broadcasting."
+    },
+    {
+      "source": "pv",
+      "start": 32,
+      "end": 36,
+      "reason": "The performance becomes a hurricane."
+    },
+    {
+      "source": "pv",
+      "start": 36,
+      "end": 41,
+      "reason": "Both friends flee; the audience stays in the conversation."
+    },
+    {
+      "source": "pv",
+      "start": 41,
+      "end": 47,
+      "reason": "The streamer asks viewers for feedback; they answer."
+    },
+    {
+      "source": "pv",
+      "start": 47,
+      "end": 54,
+      "reason": "A late viewer misreads the situation, then the title lands."
+    }
+  ],
+  "grade": "eq=contrast=1.08:brightness=0.015:saturation=1.06:gamma=1.13,vignette=PI/6,drawbox=x=0:y=0:w=iw:h=82:color=black:t=fill,drawbox=x=0:y=ih-82:w=iw:h=82:color=black:t=fill",
+  "music": "assets/mastered.wav",
+  "musicVolume": 1,
+  "subtitles": "assets/titles.ass"
+}

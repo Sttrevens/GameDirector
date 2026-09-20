@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "manifestSha256": "20670561cff03ff30b76a0b85abc975e223905663bacd08a752b93be4c9ce73a",
+  "performances": [
+    {
+      "actor": "legion-body",
+      "clip": "bow",
+      "meaning": "上身前倾，可用作鞠躬或礼貌开场",
+      "usefulFor": [],
+      "constraints": [
+        "纯视觉编排；不证明战斗伤害或真实观众事件。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "sandring-live/src/fighters.js:738"
+        },
+        {
+          "kind": "observation",
+          "source": "captures/sandring/production-01/picture.mp4 sha256:ea8ae26a0bb0312206fb8278930fc7ed26baeb4064435e84f7a4c0f3c28d89ce",
+          "start": 5,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "actor": "minotaur-body",
+      "clip": "roar",
+      "meaning": "头部上仰；是否读成威胁需要实拍确认",
+      "usefulFor": [],
+      "constraints": [
+        "纯视觉编排；不证明战斗伤害或真实观众事件。",
+        "当前牛头人造型及暗部细节不足，仅能读出头部抬起；不能声称已清晰表达愤怒。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "sandring-live/src/fighters.js:759"
+        }
+      ]
+    },
+    {
+      "actor": "legion-body",
+      "clip": "down",
+      "meaning": "上身前倒并降低位置，可表示倒下",
+      "usefulFor": [],
+      "constraints": [
+        "纯视觉编排；不证明战斗伤害或真实观众事件。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "sandring-live/src/fighters.js:719"
+        },
+        {
+          "kind": "observation",
+          "source": "captures/sandring/production-01/picture.mp4 sha256:ea8ae26a0bb0312206fb8278930fc7ed26baeb4064435e84f7a4c0f3c28d89ce",
+          "start": 23,
+          "end": 27
+        }
+      ]
+    },
+    {
+      "actor": "legion-body",
+      "clip": "wave",
+      "meaning": "单侧肢体持续挥动，可用作招呼或不服输的收尾",
+      "usefulFor": [],
+      "constraints": [
+        "纯视觉编排；不证明战斗伤害或真实观众事件。",
+        "当前广角中挥手幅度和肢体轮廓不足；设计语义尚未通过可读性审片。"
+      ],
+      "evidence": [
+        {
+          "kind": "design",
+          "source": "sandring-live/src/fighters.js:769"
+        }
+      ]
+    }
+  ]
+}

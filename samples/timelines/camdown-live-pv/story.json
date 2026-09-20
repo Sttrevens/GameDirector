@@ -1,0 +1,32 @@
+{
+  "title": "CAM DOWN! — 观众还在看",
+  "duration": 54,
+  "presentation": "Authored animated PV; dialogue and audience reactions illustrate current gameplay, not captured provider responses or the production HUD.",
+  "dialogue": [
+    {"t":0.65,"role":"hero","text":"家人们，听得到吗？","rate":215},
+    {"t":6.2,"role":"hero","text":"行，给你们整一个。","rate":220},
+    {"t":9.45,"role":"crew","text":"哥，这身材，天生主角！","rate":220},
+    {"t":17.15,"role":"hero","text":"你们就爱看这个？","rate":225},
+    {"t":20.15,"role":"crew","text":"脸嘛，也就一般。","rate":215},
+    {"t":30.15,"role":"hero","text":"坏了，说过头了。","rate":235},
+    {"t":35.7,"role":"hero","text":"跑啊！","rate":250},
+    {"t":41.2,"role":"crew","text":"都这样了，还播？","rate":230},
+    {"t":43.65,"role":"hero","text":"家人们，满意吗？","rate":215}
+  ],
+  "audience": [
+    {"t":3.05,"end":6.0,"user":"椰子冻","text":"听到了！","tone":"warm","because":"Replies to the streamer's sound check."},
+    {"t":4.0,"end":6.0,"user":"不睡觉","text":"让它摆个帅的！","tone":"warm","because":"Motivates the compliment and the filming attempt."},
+    {"t":14.0,"end":17.0,"user":"椰子冻","text":"它真摆了！","tone":"warm","because":"Reacts only after the monster starts its pose."},
+    {"t":15.05,"end":19.6,"user":"不睡觉","text":"敢说它脸不行吗？","tone":"chaos","because":"Escalates the stunt; hero acknowledges before partner speaks."},
+    {"t":24.5,"end":27.5,"user":"椰子冻","text":"完了，它听进去了","tone":"warm","because":"Acknowledges the specific negative semantic reaction."},
+    {"t":27.0,"end":30.0,"user":"不睡觉","text":"刚刚谁让你说的啊","tone":"chaos","because":"A callback to their own provocation, not generic spam."},
+    {"t":37.0,"end":40.0,"user":"不睡觉","text":"别抖！看不清了！","tone":"chaos","because":"The broadcast remains live through the escape."},
+    {"t":38.2,"end":41.0,"user":"椰子冻","text":"先活着啊！！","tone":"warm","because":"Contrasting audience response to the same incident."},
+    {"t":46.0,"end":49.0,"user":"椰子冻","text":"满意！下次别听他的","tone":"warm","because":"Answers the streamer's closing question."},
+    {"t":47.0,"end":49.0,"user":"刚进来的","text":"主播在追怪吗？","tone":"neutral","because":"A late arrival misreads the live event; final comic payoff."}
+  ],
+  "semanticReactions": [
+    {"t":13.05,"end":14.35,"text":"得意","kind":"positive","sourceLine":2,"animation":"ConfidencePose"},
+    {"t":23.4,"end":24.9,"text":"破防","kind":"negative","sourceLine":4,"animation":"Irritated"}
+  ]
+}

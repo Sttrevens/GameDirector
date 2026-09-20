@@ -1,0 +1,200 @@
+{
+  "version": "0.1",
+  "id": "03_keep_rolling",
+  "cues": [
+    {
+      "t": 0,
+      "type": "actor.spawn",
+      "role": "bigguai",
+      "location": "gf_gate",
+      "headingTo": "gf_cam_low"
+    },
+    {
+      "t": 0,
+      "type": "actor.spawn",
+      "role": "speaker",
+      "location": "gf_stage",
+      "headingTo": "gf_cam_low"
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "Hip Hop Dancing",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "RageExpose",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "Speaking",
+      "fade": 0
+    },
+    {
+      "t": 0,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "gf_cam_low",
+        "fov": 46,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "offsetY": 0.5,
+          "toOffsetX": -1,
+          "toOffsetY": 0.9,
+          "toOffsetZ": 1.6,
+          "targetHeight": 2.8,
+          "shake": 0.3
+        },
+        "to": "gf_cam_low"
+      }
+    },
+    {
+      "t": 4,
+      "type": "camera.shot",
+      "shot": {
+        "type": "dolly",
+        "subject": "speaker",
+        "frame": "full",
+        "from": "sc_north_stage",
+        "fov": 28,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "offsetY": 0.2,
+          "offsetZ": 2,
+          "targetHeight": 1.4,
+          "roll": -4,
+          "toOffsetX": 0.35,
+          "toOffsetY": 0.35,
+          "toOffsetZ": 2.6
+        },
+        "to": "sc_north_stage"
+      }
+    },
+    {
+      "t": 4,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "BiteAttack",
+      "fade": 0
+    },
+    {
+      "t": 7,
+      "type": "camera.shot",
+      "shot": {
+        "type": "orbit",
+        "subject": "bigguai",
+        "frame": "full",
+        "from": "sc_east_gate",
+        "fov": 50,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "orbitDeg": 30,
+          "targetHeight": 2.5,
+          "offsetY": 0.3,
+          "shake": 0.6
+        }
+      }
+    },
+    {
+      "t": 7,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Hurricane",
+      "fade": 0
+    },
+    {
+      "t": 7,
+      "type": "marker",
+      "label": "Performance loses control"
+    },
+    {
+      "t": 8,
+      "type": "world.timescale",
+      "scale": 0.4,
+      "duration": 3
+    },
+    {
+      "t": 11,
+      "type": "camera.shot",
+      "shot": {
+        "type": "lockoff",
+        "subject": "hero",
+        "frame": "full",
+        "from": "gf_cam_low",
+        "fov": 34,
+        "durationSeconds": 3,
+        "ease": "inOut",
+        "params": {
+          "offsetX": -2,
+          "offsetY": 0.2,
+          "offsetZ": 3.5,
+          "targetHeight": 1.0
+        }
+      }
+    },
+    {
+      "t": 11,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "Dodge",
+      "fade": 0
+    },
+    {
+      "t": 14,
+      "type": "camera.shot",
+      "shot": {
+        "type": "crane",
+        "subject": "hero",
+        "frame": "full",
+        "from": "gf_cam_north",
+        "fov": 48,
+        "durationSeconds": 4,
+        "ease": "inOut",
+        "params": {
+          "toOffsetY": 2,
+          "targetHeight": 1.0
+        },
+        "to": "sc_high_gate"
+      }
+    },
+    {
+      "t": 14,
+      "type": "actor.anim",
+      "role": "hero",
+      "clip": "IKIdle",
+      "fade": 0
+    },
+    {
+      "t": 14,
+      "type": "actor.anim",
+      "role": "bigguai",
+      "clip": "Idle",
+      "fade": 0.4
+    },
+    {
+      "t": 14,
+      "type": "actor.anim",
+      "role": "speaker",
+      "clip": "Idle",
+      "fade": 0.3
+    },
+    {
+      "t": 14,
+      "type": "marker",
+      "label": "The lens is still rolling"
+    }
+  ]
+}

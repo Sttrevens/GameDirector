@@ -1,0 +1,57 @@
+name: Verify director product
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet test --no-restore --configuration Release --logger trx
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tests-${{ matrix.os }}
+          path: '**/TestResults/*.trx'
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: dotnet restore --locked-mode && dotnet build --no-restore
+      - run: python3 tools/test_media_pipeline.py
+      - run: python3 tools/test_take_recovery.py
+      - run: python3 tools/test_workbench.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: media-and-recovery
+          path: captures/
+  package:
+    runs-on: ubuntu-latest
+    needs: [core, media]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - run: python3 tools/package_release.py --out dist/candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: director-candidate
+          path: dist/*.zip

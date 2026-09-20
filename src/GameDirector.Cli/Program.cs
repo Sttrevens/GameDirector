@@ -19,15 +19,16 @@ namespace GameDirector.Cli;
 /// </summary>
 public static class Program
 {
-    private const string DefaultEndpoint = "http://127.0.0.1:39777";
 
     public static async Task<int> Main(string[] args)
     {
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help") { Usage(); return 0; }
 
+        using var cancellation = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
         string command = args[0];
         string? positional = args.Length > 1 && !args[1].StartsWith("--") ? args[1] : null;
-        string endpoint = Option(args, "--endpoint") ?? DefaultEndpoint;
+        string endpoint = Option(args, "--endpoint") ?? GameDirector.Core.Dsl.BridgeDefaults.UnityEndpoint;
         string? manifestPath = Option(args, "--manifest");
         string? outPath = Option(args, "--out");
 
@@ -35,6 +36,26 @@ public static class Program
         {
             switch (command)
             {
+                case "guide": Console.WriteLine(DirectorProduct.Guide()); return 0;
+                case "doctor": {
+                    var report=await DirectorProduct.Doctor(Option(args,"--endpoint"),cancellation.Token);
+                    var json=DslJson.Serialize(report);Console.WriteLine(json);
+                    return System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("ok").GetBoolean()?0:1;
+                }
+                case "catalog-init": {
+                    if(manifestPath==null || outPath==null)return Fail("catalog-init requires --manifest and --out");
+                    using var file=new FileStream(outPath,FileMode.CreateNew,FileAccess.Write);
+                    using var writer=new StreamWriter(file);writer.Write(DslJson.Serialize(CatalogTools.Scaffold(manifestPath)));return 0;
+                }
+                case "catalog-check": {
+                    if(positional==null || manifestPath==null)return Fail("catalog-check requires catalog path and --manifest");
+                    Console.WriteLine(DslJson.Serialize(CatalogTools.Inspect(positional,manifestPath)));return 0;
+                }
+                case "resume": {
+                    if(positional==null)return Fail("resume requires a take directory");
+                    Console.WriteLine(await TakeRecorder.Resume(positional,Console.Error.WriteLine,cancellation.Token));return 0;
+                }
+                case "compile":
                 case "validate":
                 {
                     if (positional == null) return Fail("validate requires a timeline path");
@@ -43,8 +64,10 @@ public static class Program
                         ? DslJson.Load<CapabilityManifest>(manifestPath)
                         : await new DirectorBridgeClient(endpoint).GetManifestAsync();
                     var result = TimelineCompiler.Compile(timeline, manifest);
-                    foreach (var d in result.Diagnostics) Console.WriteLine(d.ToString());
+                    foreach (var d in result.Diagnostics) { if(command=="compile")Console.Error.WriteLine(d.ToString());else Console.WriteLine(d.ToString()); }
                     if (result.HasErrors) { Console.Error.WriteLine($"INVALID: {result.Diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error)} error(s)"); return 1; }
+                    if(command=="compile" && result.Diagnostics.Any(d=>d.Code==TimelineCompiler.WRoleNotPresent)) return Fail("compile requires roles to be present when used");
+                    if(command=="compile"){Console.WriteLine(DslJson.Serialize(result.Timeline));return 0;}
                     Console.WriteLine($"VALID: '{result.Timeline!.Id}' — {result.Timeline.OrderedCues.Count} cues, duration {result.Timeline.Duration:0.###}s");
                     return 0;
                 }
@@ -89,6 +112,18 @@ public static class Program
                     return 0;
                 }
 
+                case "take":
+                {
+                    if(positional==null || outPath==null)return Fail("take requires timeline and --out <new directory>");
+                    Console.WriteLine(await TakeRecorder.Record(positional,outPath,endpoint,
+                        int.Parse(Option(args,"--fps")??"24"),int.Parse(Option(args,"--width")??"1280"),int.Parse(Option(args,"--height")??"720"),Console.Error.WriteLine,cancellation.Token));
+                    return 0;
+                }
+                case "edit":
+                {
+                    if(positional==null || outPath==null)return Fail("edit requires edit.json and --out <new directory>");
+                    Console.WriteLine(await EditRenderer.Render(positional,outPath,cancellation.Token));return 0;
+                }
                 case "grammar":
                     Grammar();
                     return 0;
@@ -128,7 +163,14 @@ public static class Program
           gd play <timeline.json> [--endpoint url]
           gd stop | status [--endpoint url]
           gd capture --out frame.png [--endpoint url]
-          gd grammar
+          gd take <timeline.json> --out <new directory> [--fps 24 --width 1280 --height 720 --endpoint url]
+          gd edit <edit.json> --out <new directory>
+          gd grammar | guide
+          gd doctor [--endpoint url]
+          gd compile <timeline.json> --manifest m.json
+          gd catalog-init --manifest m.json --out performances.json
+          gd catalog-check performances.json --manifest m.json
+          gd resume <take-directory>
         exit: 0 ok · 1 validation/usage failure · 2 bridge unreachable
         """);
 

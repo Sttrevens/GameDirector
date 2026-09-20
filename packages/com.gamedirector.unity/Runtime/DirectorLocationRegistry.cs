@@ -38,72 +38,25 @@ namespace GameDirector.Unity
         }
 
         /// <summary>Find a location pose by id across all active registries (child name = id).</summary>
-        public static bool FindPose(string id, out Vector3 pos, out float headingDeg)
+        public static bool FindPose(string id, out Vector3 pos, out float headingDeg, UnityEngine.SceneManagement.Scene? scene = null)
         {
             pos = default; headingDeg = 0f;
             if (string.IsNullOrEmpty(id)) return false;
             EnsurePopulated();
+            bool found = false;
             for (int i = 0; i < Active.Count; i++)
             {
                 var reg = Active[i];
-                if (reg == null) continue;
+                if (reg == null || !reg.isActiveAndEnabled || (scene.HasValue && reg.gameObject.scene != scene.Value)) continue;
                 var child = reg.transform.Find(id);
                 if (child == null) continue;
+                if (found) throw new System.InvalidOperationException("duplicate location id in scene: " + id);
+                found = true;
                 pos = child.position;
                 headingDeg = child.eulerAngles.y;
-                return true;
             }
-            return false;
+            return found;
         }
     }
 
-    /// <summary>
-    /// Scene role registry: ONE component per scene, entries map role ids to
-    /// existing scene Transforms (e.g. the hero). References point at native
-    /// Transform components — immune to the binary-scene scripted-type fileID
-    /// collision described above. Dynamically spawned roles bypass this registry
-    /// entirely (the adapter tracks them directly).
-    /// </summary>
-    public sealed class DirectorRoleRegistry : MonoBehaviour
-    {
-        [System.Serializable]
-        public sealed class Entry
-        {
-            public string roleId;
-            public Transform target;
-        }
-
-        [SerializeField] private List<Entry> entries = new List<Entry>();
-        public IReadOnlyList<Entry> Entries => entries;
-
-        private static readonly List<DirectorRoleRegistry> Active = new List<DirectorRoleRegistry>();
-
-        private void OnEnable() { if (!Active.Contains(this)) Active.Add(this); }
-        private void OnDisable() { Active.Remove(this); }
-
-        private static void EnsurePopulated()
-        {
-            Active.RemoveAll(r => r == null);
-            if (Active.Count != 0) return;
-            foreach (var reg in Object.FindObjectsOfType<DirectorRoleRegistry>(true))
-                if (!Active.Contains(reg)) Active.Add(reg);
-        }
-
-        public static Transform Find(string roleId)
-        {
-            if (string.IsNullOrEmpty(roleId)) return null;
-            EnsurePopulated();
-            for (int i = 0; i < Active.Count; i++)
-            {
-                var reg = Active[i];
-                if (reg == null) continue;
-                for (int j = 0; j < reg.entries.Count; j++)
-                {
-                    var e = reg.entries[j];
-                    if (e != null && e.roleId == roleId && e.target != null) return e.target;
-                }
-            }
-            return null;
-        }
-    }
 }

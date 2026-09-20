@@ -1,113 +1,105 @@
+using System;
 using System.Collections.Generic;
 using GameDirector.Core.Compilation;
 using GameDirector.Core.Dsl;
 using GameDirector.Core.Playback;
+using GameDirector.Core.Capture;
 using UnityEngine;
 
 namespace GameDirector.Unity
 {
-    /// <summary>
-    /// Hosts the deterministic TimelinePlayer inside play mode. Ticks with
-    /// unscaled delta time so world.timescale slow-mo never distorts cue timing.
-    /// Owns the event ring buffer surfaced by /status for the review loop.
-    ///
-    /// Multi-instance note: this component is deliberately scene-scoped — it
-    /// holds no static state. The active instance is created by whoever owns
-    /// director mode in the host project (see adapters/cdrebirth).
-    /// </summary>
     public sealed class DirectorRuntime : MonoBehaviour
     {
+        /// <summary>A take with no frame request for this long is abandoned: the
+        /// stage must return to interactive presentation on its own.</summary>
+        private const double TakeIdleTimeoutSeconds = 60;
         [SerializeField] private GameDirectorAdapterBase adapter;
-        [SerializeField] private int statusEventBufferSize = 32;
-
         private TimelinePlayer _player;
-        private readonly LinkedList<string> _recentEvents = new LinkedList<string>();
-
-        public CapabilityManifest Manifest => adapter != null ? adapter.Manifest : null;
+        private TakeReceipt _take;
+        private byte[] _lastFrame;
+        private float _previousTimeScale;
+        private bool _frozen;
+        private double _lastRequest;
+        private readonly List<object> _reviews = new List<object>();
+        public CapabilityManifest Manifest => adapter?.Manifest;
         public PlayerState? State => _player?.State;
-        public double Time => _player?.Time ?? 0;
-        public double Duration => _player?.Duration ?? 0;
-
-        private void Awake()
-        {
-            if (adapter == null) adapter = GetComponent<GameDirectorAdapterBase>();
-            if (adapter == null) adapter = gameObject.AddComponent<GenericSceneAdapter>();
-        }
-
+        public double Time => _player?.Time??0;
+        public double Duration => _player?.Duration??0;
+        private CinematicCameraRig Rig => GetComponent<CinematicCameraRig>();
+        private void Awake() {if(adapter==null)adapter=GetComponent<GameDirectorAdapterBase>();}
         private void Update()
         {
-            if (_player == null || _player.State != PlayerState.Playing) return;
-            _player.Tick(UnityEngine.Time.unscaledDeltaTime);
-            DrainEvents();
-        }
-
-        /// <summary>Compile + play. Returns a diagnostics DTO; on errors nothing plays.</summary>
-        public object PlayFromJson(string timelineJson)
-        {
-            var asset = BridgeJson.Deserialize<TimelineAsset>(timelineJson);
-            if (Manifest == null) return new { ok = false, errors = new[] { "no adapter manifest bound" } };
-
-            var result = TimelineCompiler.Compile(asset, Manifest);
-            if (result.HasErrors)
-            {
-                var errors = new List<string>();
-                foreach (var d in result.Diagnostics)
-                    if (d.Severity == DiagnosticSeverity.Error) errors.Add(d.ToString());
-                return new { ok = false, errors = errors.ToArray() };
+            if(_take?.State=="Capturing") {
+                if(UnityEngine.Time.realtimeSinceStartupAsDouble-_lastRequest>TakeIdleTimeoutSeconds)Stop();
+                return;
             }
-
-            _player = new TimelinePlayer(result.Timeline, adapter);
-            _recentEvents.Clear();
-            _drained = 0;
-            _player.Play();
-            DrainEvents();
-            return new
-            {
-                ok = true,
-                id = result.Timeline.Id,
-                cues = result.Timeline.OrderedCues.Count,
-                duration = result.Timeline.Duration,
-                warnings = WarningsOf(result)
-            };
+            if(_player?.State==PlayerState.Playing)_player.Tick(UnityEngine.Time.unscaledDeltaTime);
         }
-
-        public void Stop() => _player?.Stop();
-
-        public byte[] CapturePng()
+        private void OnDisable()=>Stop();
+        private CompileResult Prepare(TimelineAsset asset)
         {
-            var rig = GetComponent<CinematicCameraRig>() ?? gameObject.AddComponent<CinematicCameraRig>();
-            return FrameCapture.Capture(rig.DirectorCamera, 1280, 720);
+            var result=TimelineCompiler.Compile(asset,Manifest);
+            if(result.HasErrors)throw new InvalidOperationException(string.Join("\n",result.Diagnostics));
+            foreach(var d in result.Diagnostics)if(d.Code==TimelineCompiler.WRoleNotPresent)
+                throw new InvalidOperationException("Unexecutable timeline: "+d);
+            adapter.Preflight(asset);return result;
         }
-
-        public object GetStatusDto() => new
+        public object PlayFromJson(string json)
         {
-            state = (_player?.State ?? PlayerState.Idle).ToString(),
-            time = _player?.Time ?? 0,
-            duration = _player?.Duration ?? 0,
-            recentEvents = _recentEvents
-        };
-
-        // Events list is append-only per run; _drained tracks how many we copied.
-        private int _drained;
-
-        private void DrainEvents()
-        {
-            if (_player == null) return;
-            var events = _player.Events;
-            for (int i = _drained; i < events.Count; i++)
-            {
-                _recentEvents.AddLast(events[i].ToString());
-                while (_recentEvents.Count > statusEventBufferSize) _recentEvents.RemoveFirst();
-            }
-            _drained = events.Count;
+            var asset=BridgeJson.Deserialize<TimelineAsset>(json);var result=Prepare(asset);
+            Stop();_take=null;_player=new TimelinePlayer(result.Timeline,adapter);_player.Play();
+            if(_player.State==PlayerState.Failed)throw new InvalidOperationException(_player.Failure);
+            return new {ok=true,id=result.Timeline.Id,cues=result.Timeline.OrderedCues.Count,duration=result.Timeline.Duration,diagnostics=result.Diagnostics};
         }
-
-        private static string[] WarningsOf(CompileResult result)
+        public TakeReceipt BeginTake(TakeRequest request)
         {
-            var list = new List<string>();
-            foreach (var d in result.Diagnostics)
-                if (d.Severity == DiagnosticSeverity.Warning) list.Add(d.ToString());
-            return list.ToArray();
+            if(_take?.State=="Capturing")throw new InvalidOperationException("a take is already capturing; stop it explicitly");
+            if(request==null || CaptureContract.CheckGeometry(request.FrameRate,request.Width,request.Height)!=null)
+                throw new ArgumentException("take requires "+CaptureContract.MinFrameRate+".."+CaptureContract.MaxFrameRate+" fps and even dimensions within "+CaptureContract.MinDimension+".."+CaptureContract.MaxWidth+" x "+CaptureContract.MinDimension+".."+CaptureContract.MaxHeight);
+            if (!string.IsNullOrEmpty(request.SourceFingerprint) && (Manifest.Capabilities == null || !Manifest.Capabilities.TryGetValue(CapabilityKeys.PresentationSourceFingerprint,out var identity) || identity != request.SourceFingerprint))
+                throw new InvalidOperationException("source fingerprint changed before take start");
+            var result=Prepare(request.Timeline);
+            if(!request.Timeline.Cues.Exists(x=>x.Type==CueTypes.CameraShot && x.T==0))throw new ArgumentException("a picture take needs a camera shot at t=0");
+            if(result.Timeline.Duration<=0 || result.Timeline.Duration>CaptureContract.MaxTakeSeconds)throw new ArgumentException("take duration must be >0 and <="+(int)CaptureContract.MaxTakeSeconds+" seconds");
+            if(request.Timeline.Cues.Exists(x=>x.Type==CueTypes.AudioPlay || x.Type==CueTypes.AudioStop))
+                throw new InvalidOperationException("frame-stepped picture capture requires audio to be mixed in the edit; live audio cues cannot be recorded synchronously");
+            Stop();_reviews.Clear();_lastFrame=null;
+            _take=new TakeReceipt{TakeId=Guid.NewGuid().ToString("N"),TimelineId=result.Timeline.Id,State="Capturing",FrameRate=request.FrameRate,Width=request.Width,Height=request.Height,
+                FrameCount=(int)Math.Ceiling(result.Timeline.Duration*request.FrameRate-1e-8)};
+            _previousTimeScale=UnityEngine.Time.timeScale;_frozen=true;UnityEngine.Time.timeScale=0;
+            _lastRequest=UnityEngine.Time.realtimeSinceStartupAsDouble;
+            _player=new TimelinePlayer(result.Timeline,adapter);_player.Play();
+            if(_player.State==PlayerState.Failed){FailTake(_player.Failure);throw new InvalidOperationException(_player.Failure);}
+            return _take;
         }
+        public byte[] NextFrame(FrameRequest request)
+        {
+            if(request==null || _take==null || request.TakeId!=_take.TakeId)throw new InvalidOperationException("take identity mismatch");
+            _lastRequest=UnityEngine.Time.realtimeSinceStartupAsDouble;
+            if(request.FrameIndex==_take.CapturedFrames-1 && _lastFrame!=null)return _lastFrame;
+            if(_take.State!="Capturing" || request.FrameIndex!=_take.CapturedFrames)throw new InvalidOperationException("frame index mismatch; expected "+_take.CapturedFrames);
+            try {
+                Rig.DirectorCamera.aspect=(float)_take.Width/_take.Height;
+                if(request.FrameIndex%_take.FrameRate==0)_reviews.Add(new{frame=request.FrameIndex,time=Time,composition=Rig.InspectFrame()});
+                var bytes=FrameCapture.Capture(Rig.DirectorCamera,_take.Width,_take.Height);
+                _player.Tick(1.0/_take.FrameRate);
+                if(_player.State==PlayerState.Failed)throw new InvalidOperationException(_player.Failure);
+                _lastFrame=bytes;_take.CapturedFrames++;
+                if(_take.CapturedFrames==_take.FrameCount){
+                    // Fractional duration rounding must still complete the core timeline.
+                    if(_player.State==PlayerState.Playing)_player.Tick(Math.Max(0,Duration-Time));
+                    if(_player.State!=PlayerState.Finished)throw new InvalidOperationException("timeline did not finish");
+                    _take.State="Completed";Unfreeze();
+                }
+                return bytes;
+            } catch(Exception ex){FailTake(ex.Message);throw;}
+        }
+        private void FailTake(string error){if(_take!=null){_take.State="Failed";_take.Error=error;}_player?.Stop();Unfreeze();}
+        private void Unfreeze(){if(_frozen){UnityEngine.Time.timeScale=_previousTimeScale;_frozen=false;}}
+        public void StopTake(string takeId){if(_take==null || _take.TakeId!=takeId)throw new InvalidOperationException("take identity mismatch");Stop();}
+        public void Stop(){_player?.Stop();if(_take?.State=="Capturing")_take.State="Cancelled";Unfreeze();}
+        public byte[] CapturePng()=>FrameCapture.Capture(Rig.DirectorCamera,FilmDefaults.Width,FilmDefaults.Height);
+        public object GetTakeDto()=>new{take=_take,events=_player?.Events,reviews=_reviews};
+        public object GetStatusDto()=>new{state=(_player?.State??PlayerState.Idle).ToString(),time=Time,duration=Duration,error=_player?.Failure,take=_take,recentEvents=_player?.Events};
     }
 }

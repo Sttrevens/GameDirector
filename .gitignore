@@ -10,7 +10,16 @@ obj/
 # Local tool output
 out/
 captures/
+.tools/
 
 # NOTE: packages/com.gamedirector.unity/Plugins/*.dll IS committed on purpose:
 # Unity consumes the precompiled GameDirector.Core.dll so the Unity project
 # does not need a dotnet toolchain. Rebuild via tools/build_core_dll.sh.
+
+dist/
+output/
+.playwright-cli/
+
+# Local verification output
+__pycache__/
+TestResults/

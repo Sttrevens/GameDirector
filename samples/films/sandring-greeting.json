@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "title": "沙圈 · 一次笨拙的示好",
+  "frameRate": 12,
+  "width": 640,
+  "height": 360,
+  "scenes": [
+    {
+      "id": "greeting",
+      "performance": [
+        {
+          "t": 0,
+          "type": "actor.anim",
+          "role": "legion",
+          "clip": "bow",
+          "fade": 0
+        },
+        {
+          "t": 1,
+          "type": "actor.anim",
+          "role": "minotaur",
+          "clip": "nod",
+          "fade": 0
+        },
+        {
+          "t": 2,
+          "type": "actor.anim",
+          "role": "legion",
+          "clip": "wave",
+          "fade": 0
+        }
+      ],
+      "shots": [
+        {
+          "id": "arrival",
+          "start": 0,
+          "end": 1,
+          "purpose": "建立双方和示好的关系",
+          "camera": {
+            "type": "lockoff",
+            "subject": "legion",
+            "frame": "full",
+            "from": "wide"
+          }
+        },
+        {
+          "id": "response",
+          "start": 1,
+          "end": 2,
+          "purpose": "看见对方回应，承接鞠躬",
+          "camera": {
+            "type": "lockoff",
+            "subject": "minotaur",
+            "frame": "closeup",
+            "from": "beast-close"
+          }
+        },
+        {
+          "id": "wave",
+          "start": 2,
+          "end": 3,
+          "purpose": "以挥手结束小小的和解",
+          "camera": {
+            "type": "lockoff",
+            "subject": "legion",
+            "frame": "medium",
+            "from": "legion-close"
+          }
+        }
+      ]
+    }
+  ]
+}

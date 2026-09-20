@@ -5,7 +5,7 @@
 ## 从 CDREBIRTH 现状推出的三个适配事实
 
 1. **游戏代码不依赖 Cinemachine / Timeline（包已安装但游戏代码基本不用）。** `Packages/manifest.json` 里有 cinemachine 2.10 / timeline 1.7.6，但全项目只有 `Player.cs` 引用 Cinemachine，Timeline 仅出现在第三方插件里 ⇒ 镜头系统由 GameDirector 自带通用解释器（`CinematicCameraRig`）承担，不与游戏内联机时代的相机栈（`AimCameraLock` 执行序 32700 等）纠缠，也不给游戏仓库加新依赖。
-2. **已有 AVPro Movie Capture（RenderHeads）。** M2 的视频 take 直接驱动它，不需要引入新录制方案。
+2. **录制必须服从呈现时钟。** 当前采用逐帧 PNG 事务与 FFmpeg 编码，统一相机、动作、位移的时间；AVPro 留作未来实时音画录制方案。
 3. **联机权威纪律极强（runner-scoped、禁全局单例、SA/IA/peer 分层）。** ⇒ v0 彻底绕开：director mode = 无 NetworkRunner 的离线沙盒场景。桥包代码也遵守项目教训：全部状态挂在场景组件上，零静态（marker registry 除外——纯呈现查找表，OnEnable/OnDisable 对称维护）。
 
 ## 权威透镜（Fusion Host/Client，按 AGENTS.md 要求显式分类）
@@ -48,15 +48,19 @@ DM（LLMTaskDirector/LiveShow/Ambient）是玩法真相（任务、评分、热�
 
 ### M1 踩坑记录（后续适配者必读）
 
-1. **二进制场景 + 同类型脚本组件 = 组件静默丢失。** CDREBIRTH 场景是二进制序列化；保存→重载后多个同类型 MonoBehaviour 会被丢弃（实测 5 个锚点组件丢 2-3 个，原生组件不受影响）。**对策（已是桥包标准模式）：每种脚本类型每场景只放一个注册表组件**（`DirectorLocationRegistry`：位置 = 子物体；`DirectorRoleRegistry`：条目引用原生 Transform）。
+1. **更正旧诊断：MonoScript 类型身份错误。** 2026-09-06 实查发现两个注册表 MonoBehaviour 共用 `SceneMarkers.cs`，导致保存重载后角色注册表解析成位置注册表。已拆为类名匹配的脚本文件，保留位置脚本 GUID，并在新导演场景重新绑定；保存重载已验证两个类型身份。不能据此声称 Unity 二进制场景不能保存同类组件。
 2. **编辑态无 OnEnable，静态注册表会缓存已销毁对象。** 场景重载（非 domain reload）后静态列表里是假 null 尸体，且"空才扫描"的优化让它永不恢复。**对策：查找前 RemoveAll 假 null，空缓存时重新 FindObjectsOfType。**
 3. **manifest 以 TextAsset 形式供给运行时**（包内 Runtime/cdrebirth.manifest.json，由 `tools/sync_unity_package.sh` 从规范源复制）；改 manifest 后必须 refresh + 重进播放态，否则游戏服务的是旧清单。
-4. **每次 take 要干净世界：退出播放再进入**（场景从磁盘重载）；v0 没有世界内重置。M2 的 `gd take` 应内置 reset。
-5. **怪物/英雄必须进呈现模式**（`PresentationMode.Apply`：禁用除 Animator 外全部 Behaviour + 刚体运动学化），否则游戏 AI 与时间轴抢方向盘。
+4. **每个 take 持有独立呈现会话。** 完成、停止、失败均恢复借用对象和相机、回收生成角色；冷启动仍用于验证游戏自动启动隔离。
+5. **怪物/英雄必须进呈现模式**（`PresentationMode.Acquire`：可恢复地禁用输入/AI/导航/竞争相机并将刚体运动学化，保留渲染灯光），否则游戏 AI 与时间轴抢方向盘。
 6. **取景不能盲摆锚点**：用一条勘察时间轴（`samples/timelines/scout_grimforest_gate.json`）批量实拍候选机位再定点——这就是 LLM 日后的 location scouting 回路。
-7. 已知未决：`gf_stage`(3,0.1,14) 深入站台建筑内部，t≈16 后主体被遮挡——分镜 staging 问题（重设 stage 点位或改英雄走位），不影响系统验收。
+7. 已知未决：`gf_stage`(3,0.1,14) 深入站台建筑内部，t≈16 后主体被遮挡——分镜 staging 问题（重设 stage 点位或改英雄走位），该问题直接阻断成片验收；必须重新 staging 和实拍审片。
 
 ### M1 过程还发现的环境事实
 
 - `gd` CLI / 桥的 play 入口在刚进播放态几秒内可能抢跑（桥未就绪）；调用方应重试或先探 `/health`。
 - 播放中发生 domain reload 会清空播放会话（桥自动恢复，但当条 take 作废）——拍摄期间不要触发编译。
+
+## 当前制作入口（2026-09-06）
+
+新建的 `GD_DirectorsCut_Sandbox.unity` 明确声明 `OfflinePresentationScene`，由游戏 Editor 启动器尊重其离线归属。`gd take` 生成可核验逐帧素材，`gd edit` 按带理由的剪辑表输出配乐与最终字幕成片。旧 M1 记录仅证明当时的局部演示；当前验收以 `docs/05-production-contract.md` 的实际证据为准。

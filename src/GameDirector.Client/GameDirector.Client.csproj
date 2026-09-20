@@ -12,4 +12,8 @@
     <ProjectReference Include="..\GameDirector.Core\GameDirector.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../../docs/07-directing-playbook.md" LogicalName="GameDirector.DirectingGuide" />
+    <Content Include="Fonts/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

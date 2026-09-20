@@ -65,6 +65,13 @@ namespace GameDirector.Core.Dsl
         // Marker payload
         public string Label { get; set; }
 
+        public Cue Snapshot()
+        {
+            var copy = (Cue)MemberwiseClone();
+            copy.Shot = Shot?.Snapshot();
+            return copy;
+        }
+
         // ---- compiler bookkeeping (not authored) ----
         /// <summary>Index of this cue in the authored file; -1 when injected by the compiler.</summary>
         public int SourceIndex { get; set; } = -1;
@@ -96,6 +103,13 @@ namespace GameDirector.Core.Dsl
 
         /// <summary>Shot length in seconds. 0 = cut/hold until next shot cue.</summary>
         public double DurationSeconds { get; set; }
+
+        public ShotSpec Snapshot()
+        {
+            var copy = (ShotSpec)MemberwiseClone();
+            copy.Params = Params == null ? null : new Dictionary<string, float>(Params);
+            return copy;
+        }
 
         public float? Fov { get; set; }
         public float? FocalLengthMm { get; set; }
