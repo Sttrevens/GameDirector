@@ -13,7 +13,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="GameDirector.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="../../docs/07-directing-playbook.md" LogicalName="GameDirector.DirectingGuide" />
     <Content Include="Fonts/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Declarative media distribution data ships with every published app and
+         inside the Unity bundle (Tools~/media) so installs stay offline-capable. -->
+    <Content Include="media-distributions.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -10,6 +10,12 @@
       },
       "gamedirector.core": {
         "type": "Project"
+      },
+      "gamedirector.decisions": {
+        "type": "Project",
+        "dependencies": {
+          "GameDirector.Client": "[0.2.0-alpha.1, )"
+        }
       }
     }
   }

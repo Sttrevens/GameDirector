@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Net.Http.Json;
 using System.Text.Json;
 using GameDirector.Client;
+using GameDirector.Decisions;
 using ModelContextProtocol.Server;
 
 namespace GameDirector.Mcp;
@@ -9,17 +10,54 @@ namespace GameDirector.Mcp;
 [McpServerToolType]
 public static class WorkbenchTools
 {
-    private static async Task<string> Call(string path, object? body = null)
+    private static async Task<string> Call(string path, object? body = null, int timeoutSeconds = 60)
     {
         var endpoint = Environment.GetEnvironmentVariable("GAMEDIRECTOR_WORKBENCH") ?? GameDirector.Core.Dsl.BridgeDefaults.WorkbenchEndpoint;
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "http" || !uri.IsLoopback) throw new ArgumentException("Workbench must be a local HTTP endpoint.");
-        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = new Uri(endpoint.TrimEnd('/') + "/"), Timeout = TimeSpan.FromSeconds(60) };
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = new Uri(endpoint.TrimEnd('/') + "/"), Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
         using var response = body == null ? await http.GetAsync("api/" + path) : await http.PostAsJsonAsync("api/" + path, body, DslJson.Options);
         var text = await response.Content.ReadAsStringAsync();
         return response.IsSuccessStatusCode ? text : "ERROR: " + text;
     }
     [McpServerTool, Description("Read the local director Workbench projects, asset inventories, live manifests and persistent film jobs. Run the Workbench first. All gd_studio tools share state with its UI; use these tools for managed production.")]
     public static Task<string> GdStudioState() => Call("state");
+
+    [McpServerTool, Description("Ask the configured Jev provider to match performances/sounds, choose a camera for one stable shot ID, rank candidate films, or run text-only semantic review checks on a supplied text. task is a supported decision task ID. requestPath is a local JSON request with a stable requestId, intent and task-specific candidates/document revision. This only prepares an audited proposal: it never saves the document or starts production. Read decisions policies and catalog first; needs-review/no-match preserve the original film.")]
+    public static Task<string> GdStudioDecision(string projectId, string task, string requestPath)
+    {
+        if (!DecisionTasks.All.Contains(task)) throw new ArgumentException("Supported tasks: " + string.Join(", ", DecisionTasks.All));
+        var file = new FileInfo(requestPath);
+        if (!file.Exists || file.Length > GameDirector.Core.Dsl.FilmLimits.MaxScriptBytes)
+            throw new ArgumentException("Choose an existing bounded decision request JSON file.");
+        var request = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(file.FullName));
+        if (request.ValueKind != JsonValueKind.Object) throw new ArgumentException("Decision request must be a JSON object.");
+        return Call("projects/" + Uri.EscapeDataString(projectId) + "/decisions/" + task, request, DecisionPolicyBounds.TimeoutSeconds + 30);
+    }
+
+    [McpServerTool, Description("Read a project's decision audit records, or one prior result using both task and requestId. Results include offered candidates, manifest/evidence hashes, provider answers and proposal. Reuse the same requestId only for identical inputs.")]
+    public static Task<string> GdStudioDecisionRecords(string projectId, string? task = null, string? requestId = null)
+    {
+        if ((task == null) != (requestId == null)) throw new ArgumentException("Supply both task and requestId, or neither to list records.");
+        var path = "projects/" + Uri.EscapeDataString(projectId) + "/decisions";
+        return Call(task == null ? path : path + "/" + Uri.EscapeDataString(task) + "/" + Uri.EscapeDataString(requestId!));
+    }
+
+    [McpServerTool, Description("Read decision provider status and per-task acceptance policies without returning credentials. Configure provider credentials in the local Workbench settings.")]
+    public static Task<string> GdStudioDecisionSettings() => Call("decisions/provider");
+
+    [McpServerTool, Description("Inspect or import an evidence-backed performance catalog. action is status, read, scaffold, or import. Scaffolding discovers real actor/clip IDs with unknown meaning; import requires catalogPath. Describe actual observations and authored intent separately, never infer performance from filenames.")]
+    public static Task<string> GdStudioCatalog(string projectId, string action = "status", string? catalogPath = null)
+    {
+        var path = "projects/" + Uri.EscapeDataString(projectId) + "/catalog";
+        return action switch
+        {
+            "status" => Call(path),
+            "read" => Call(path + "/content"),
+            "scaffold" => Call(path + "/scaffold", new { }),
+            "import" when catalogPath != null => Call(path, DslJson.Load<PerformanceCatalog>(catalogPath)),
+            _ => throw new ArgumentException("Use status, read, scaffold, or import with catalogPath.")
+        };
+    }
 
     [McpServerTool, Description("Read versioned film documents shared with Unity Inspector and the browser. Omit documentId to list a project's films; supply it to read the current film and revision.")]
     public static Task<string> GdStudioDocument(string projectId, string? documentId = null) =>

@@ -16,9 +16,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: dotnet restore --locked-mode
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test --no-restore --configuration Release --logger trx
+      - run: python tools/test_unity_installer.py
+      - run: python tools/test_archive_layout.py
+      - run: node tools/test_document_state.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -34,8 +43,11 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: dotnet restore --locked-mode && dotnet build --no-restore
       - run: python3 tools/test_media_pipeline.py
+      - run: dotnet run --project tools/MediaBundleValidation -- captures/media-bundle "$(command -v ffmpeg)" "$(command -v ffprobe)"
       - run: python3 tools/test_take_recovery.py
       - run: python3 tools/test_workbench.py
+      - run: python3 tools/test_film_documents.py
+      - run: python3 tools/test_decisions_http.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,14 +56,50 @@ jobs:
   package:
     runs-on: ubuntu-latest
     needs: [core, media]
+    strategy:
+      matrix:
+        runtime: [win-x64, osx-arm64, osx-x64, linux-x64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
-      - run: python3 tools/package_release.py --out dist/candidate
+      - run: python3 tools/package_release.py --runtime ${{ matrix.runtime }} --out dist/candidate-${{ matrix.runtime }}
+      - if: matrix.runtime == 'linux-x64'
+        run: python3 tools/test_distribution_smoke.py --distribution dist/candidate-${{ matrix.runtime }} --out "${{ runner.temp }}/gamedirector-native-smoke"
       - uses: actions/upload-artifact@v4
         with:
-          name: director-candidate
-          path: dist/*.zip
+          name: director-candidate-${{ matrix.runtime }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+  native-package:
+    needs: core
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: host
+        shell: python
+        run: |
+          import os, platform
+          system = {'Windows': 'win', 'Darwin': 'osx'}[platform.system()]
+          architecture = {'AMD64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}[platform.machine()]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'rid={system}-{architecture}\n')
+      - run: python tools/package_release.py --runtime ${{ steps.host.outputs.rid }} --out dist/native
+      - run: python tools/test_distribution_smoke.py --distribution dist/native --out "${{ runner.temp }}/gamedirector-native-smoke"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/gamedirector-native-smoke

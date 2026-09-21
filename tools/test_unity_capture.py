@@ -14,7 +14,7 @@ def snapshot():
 before=snapshot();(root/'source-before.json').write_text(json.dumps(before,indent=2))
 with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
 base=f'http://127.0.0.1:{port}/api/'
-env=dict(os.environ,GAMEDIRECTOR_FFMPEG=str(repo/'.tools/media/ffmpeg'))
+env=dict(os.environ)
 log=open(root/'workbench.log','w');server=subprocess.Popen(['dotnet',str(repo/'src/GameDirector.Workbench/bin/Debug/net8.0/gamedirector-workbench.dll'),'--port',str(port),'--data',str(root/'store')],env=env,stdout=log,stderr=log)
 def call(path,body=None):
  req=urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json'})

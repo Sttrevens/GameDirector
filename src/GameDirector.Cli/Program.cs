@@ -37,6 +37,51 @@ public static class Program
             switch (command)
             {
                 case "guide": Console.WriteLine(DirectorProduct.Guide()); return 0;
+                case "workbench":
+                    // Launch the sibling native app shipped next to gd; args,
+                    // stdio and the exit code pass through untouched.
+                    return await RuntimeLauncher.RunSibling("workbench", args.Skip(1), cancellation.Token);
+                case "mcp":
+                    return await RuntimeLauncher.RunSibling("mcp", args.Skip(1), cancellation.Token);
+                case "unity":
+                {
+                    if (positional != "install") return Fail("unity requires a subcommand: install");
+                    var projectRoot = Option(args, "--project");
+                    if (projectRoot == null) return Fail("unity install requires --project <Unity project root>");
+                    var packageSource = Option(args, "--source") ?? UnityPackageInstaller.DefaultSource();
+                    var plan = UnityPackageInstaller.Install(packageSource, projectRoot, args.Contains("--apply"));
+                    Console.WriteLine(DslJson.Serialize(plan));
+                    if (plan.Mode == "plan")
+                        Console.Error.WriteLine("plan only: re-run with --apply to write " + plan.Writes + " file(s)");
+                    return 0;
+                }
+                case "media":
+                {
+                    var mediaManifest = MediaDistributions.LoadBundled();
+                    var rid = DistributionManifest.CurrentRid();
+                    if (positional == "status")
+                    {
+                        Console.WriteLine(DslJson.Serialize(new
+                        {
+                            tools = MediaTools.Resolutions(),
+                            unit = mediaManifest.Unit.Tools,
+                            options = MediaInstaller.Options(mediaManifest, rid),
+                            installFolder = MediaTools.UserMediaFolder,
+                        }));
+                        return 0;
+                    }
+                    if (positional == "install")
+                    {
+                        var optionId = Option(args, "--option");
+                        if (optionId == null) return Fail("media install requires --option <id> (see gd media status)");
+                        var descriptor = Option(args, "--descriptor");
+                        var receiptFolder = Path.Combine(MediaTools.UserMediaFolder, "logs");
+                        var receipt = await MediaInstaller.Install(mediaManifest, rid, optionId, descriptor, receiptFolder, cancellation.Token);
+                        Console.WriteLine(DslJson.Serialize(receipt));
+                        return receipt.Installed || receipt.Note != null ? 0 : 1;
+                    }
+                    return Fail("media requires a subcommand: status | install");
+                }
                 case "doctor": {
                     var report=await DirectorProduct.Doctor(Option(args,"--endpoint"),cancellation.Token);
                     var json=DslJson.Serialize(report);Console.WriteLine(json);
@@ -171,6 +216,10 @@ public static class Program
           gd catalog-init --manifest m.json --out performances.json
           gd catalog-check performances.json --manifest m.json
           gd resume <take-directory>
+          gd workbench [args...]                launch the bundled workbench app
+          gd mcp [args...]                      launch the bundled MCP stdio server
+          gd unity install --project <Unity project> [--source package] [--apply]
+          gd media status | install --option <id> [--descriptor bundle.json]
         exit: 0 ok · 1 validation/usage failure · 2 bridge unreachable
         """);
 

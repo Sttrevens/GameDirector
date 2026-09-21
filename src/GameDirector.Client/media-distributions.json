@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "comment": "Declarative media-tool distribution data. The install UNIT is the complete capability: ffmpeg (with the configured encoder/filters) AND ffprobe together. A strategy that cannot provide both is never advertised as ready. 'downloads' is intentionally empty: no curated complete (ffmpeg+ffprobe) pinned archive has been hash-verified by this repository's contract tests yet, and hashes/URLs are never invented. Users on platforms without a package-manager strategy can supply an offline bundle descriptor (gd/workbench 'user-bundle' option).",
+  "unit": {
+    "tools": ["ffmpeg", "ffprobe"],
+    "encoders": ["libx264"],
+    "subtitleFilters": ["subtitles", "ass"]
+  },
+  "strategies": [
+    {
+      "id": "winget-ffmpeg",
+      "kind": "packageManager",
+      "rids": ["win-x64"],
+      "manager": "winget",
+      "managerCandidates": ["%LOCALAPPDATA%/Microsoft/WindowsApps/winget.exe"],
+      "args": ["install", "--id", "Gyan.FFmpeg", "-e", "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity"],
+      "timeoutSeconds": 1800,
+      "provides": ["ffmpeg", "ffprobe"],
+      "label": "用 Windows 包管理器安装 FFmpeg",
+      "detail": "winget install --id Gyan.FFmpeg -e（完整套件，含 ffmpeg 与 ffprobe、libx264 与 libass；签名与哈希由 winget 校验，安装在当前用户目录）",
+      "license": "FFmpeg 以 GPL 分发；libx264 为 GPL，libass 为 ISC。由你的系统从你确认的源安装，GameDirector 不分发这些二进制。"
+    },
+    {
+      "id": "brew-ffmpeg",
+      "kind": "packageManager",
+      "rids": ["osx-arm64", "osx-x64"],
+      "manager": "brew",
+      "managerCandidates": ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"],
+      "args": ["install", "ffmpeg"],
+      "timeoutSeconds": 1800,
+      "provides": ["ffmpeg", "ffprobe"],
+      "label": "用 Homebrew 安装 FFmpeg",
+      "detail": "brew install ffmpeg（完整套件，同时提供 ffmpeg 与 ffprobe，含 libx264 与 libass）",
+      "license": "FFmpeg 以 GPL 分发；由你的系统从 Homebrew 源安装。"
+    }
+  ],
+  "downloads": [],
+  "userBundle": {
+    "id": "user-bundle",
+    "label": "安装用户提供的离线 FFmpeg 套件",
+    "detail": "从本地核验描述文件（bundle descriptor JSON）安装完整的 ffmpeg+ffprobe：每个文件的 SHA-256 全部核验通过后才会装入当前用户的 GameDirector 媒体目录；描述文件不完整或核验失败则拒绝。",
+    "license": "由你在描述文件中声明来源与许可证；GameDirector 只核验哈希，不替你确认许可证。",
+    "descriptorSchema": {
+      "schemaVersion": 1,
+      "rid": "optional; if present must equal the current runtime identifier",
+      "archive": "optional path (.zip/.tar.gz/.tgz) relative to the descriptor folder",
+      "archiveSha256": "required when archive is present; lowercase hex",
+      "files": {
+        "ffmpeg": { "path": "path inside the archive, or relative to the descriptor folder", "sha256": "lowercase hex" },
+        "ffprobe": { "path": "same", "sha256": "lowercase hex" }
+      },
+      "license": "free text, surfaced in the receipt",
+      "source": "free text, surfaced in the receipt"
+    }
+  }
+}

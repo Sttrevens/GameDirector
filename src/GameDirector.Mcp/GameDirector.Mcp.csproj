@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameDirector.Client\GameDirector.Client.csproj" />
+    <ProjectReference Include="..\GameDirector.Decisions\GameDirector.Decisions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

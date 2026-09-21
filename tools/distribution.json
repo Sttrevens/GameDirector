@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "product": "GameDirector",
+  "protocolVersion": 1,
+  "comment": "Single declarative distribution manifest. Consumed by tools/gamedirector_dist.py (packaging) and by the shipped runtime (GameDirector.Client.DistributionManifest) from the copy staged at the distribution root. Version numbers are NOT stored here: the release version comes from Directory.Build.props and the Unity package version from packages/com.gamedirector.unity/package.json; packaging asserts they agree.",
+  "supportedPlatforms": [
+    "win-x64",
+    "osx-arm64",
+    "osx-x64",
+    "linux-x64"
+  ],
+  "platforms": {
+    "win-x64": {
+      "archive": "zip",
+      "executableExtension": ".exe",
+      "unixExecutables": []
+    },
+    "osx-arm64": {
+      "archive": "tar.gz",
+      "executableExtension": "",
+      "unixExecutables": [
+        "gd",
+        "gamedirector-mcp",
+        "gamedirector-workbench",
+        "createdump",
+        "Start GameDirector.command"
+      ]
+    },
+    "osx-x64": {
+      "archive": "tar.gz",
+      "executableExtension": "",
+      "unixExecutables": [
+        "gd",
+        "gamedirector-mcp",
+        "gamedirector-workbench",
+        "createdump",
+        "Start GameDirector.command"
+      ]
+    },
+    "linux-x64": {
+      "archive": "tar.gz",
+      "executableExtension": "",
+      "unixExecutables": [
+        "gd",
+        "gamedirector-mcp",
+        "gamedirector-workbench",
+        "createdump",
+        "Start GameDirector.command"
+      ]
+    }
+  },
+  "apps": {
+    "cli": {
+      "project": "src/GameDirector.Cli",
+      "folder": "cli",
+      "executable": "gd"
+    },
+    "mcp": {
+      "project": "src/GameDirector.Mcp",
+      "folder": "mcp",
+      "executable": "gamedirector-mcp"
+    },
+    "workbench": {
+      "project": "src/GameDirector.Workbench",
+      "folder": "workbench",
+      "executable": "gamedirector-workbench"
+    }
+  },
+  "unity": {
+    "packageSource": "packages/com.gamedirector.unity",
+    "packageName": "com.gamedirector.unity",
+    "packageVersionFile": "packages/com.gamedirector.unity/package.json",
+    "bundledRuntimeFolder": "Tools~/Workbench",
+    "mediaDataFolder": "Tools~/media",
+    "distributionFolder": "unity/com.gamedirector.unity"
+  },
+  "media": {
+    "manifestSource": "src/GameDirector.Client/media-distributions.json",
+    "distributionFolder": "media",
+    "manifestFile": "media-distributions.json"
+  },
+  "runtimeManifestFile": "gamedirector.runtime.json",
+  "distributionManifestFile": "distribution.json",
+  "releaseManifestFile": "manifest.json",
+  "stagingExcludes": [
+    ".DS_Store",
+    ".gamedirector-sync.json",
+    ".gamedirector-install.json"
+  ]
+}

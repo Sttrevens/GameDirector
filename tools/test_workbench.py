@@ -4,8 +4,8 @@ This is not engine or real model-provider acceptance.
 import base64, array, copy, hashlib, json, math, os, socket, struct, subprocess, threading, time, urllib.request, urllib.error, uuid, zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
 repo=Path(__file__).resolve().parents[1]
-os.environ.setdefault('GAMEDIRECTOR_FFMPEG',str(repo/'.tools/media/ffmpeg'))
 root=repo/'captures'/'workbench-contract-tests'/uuid.uuid4().hex[:12];root.mkdir(parents=True)
 source=root/'source-project';source.mkdir();(source/'source.txt').write_text('user game source stays unchanged')
 subprocess.run(['git','init','-q',str(source)],check=True)
@@ -106,13 +106,13 @@ try:
  # Real sound mixing: imported bytes are immutable, cues use edited-film time,
  # and changing only the mix must not recapture either camera.
  tone=root/'tone.wav'
- subprocess.run([str(repo/'.tools/media/ffmpeg'),'-v','error','-f','lavfi','-i','sine=frequency=440:duration=1.5','-c:a','pcm_s16le',str(tone)],check=True)
+ subprocess.run([os.environ.get('GAMEDIRECTOR_FFMPEG','ffmpeg'),'-v','error','-f','lavfi','-i','sine=frequency=440:duration=1.5','-c:a','pcm_s16le',str(tone)],check=True)
  asset=call('projects/fixture/media',dict(name='voice.wav',base64=base64.b64encode(tone.read_bytes()).decode()))
  assert call('projects/fixture/media',dict(name='voice.wav',base64=base64.b64encode(tone.read_bytes()).decode()))['id']==asset['id']
  voiced=copy.deepcopy(revision);voiced['audio']=[dict(id='voice',mediaId=asset['id'],bus='dialogue',at=.5,sourceStart=.2,duration=1,volume=.5,fadeIn=.02,fadeOut=.02)]
  voiced['subtitles']=[dict(start=.5,end=1.5,text='Hello')]
  start_count=state['starts'];sound_job=wait(call('jobs',req(voiced)));assert state['starts']==start_count and sound_job['reusedShots']==2
- raw=subprocess.check_output([str(repo/'.tools/media/ffmpeg'),'-v','error','-i',sound_job['video'],'-vn','-f','f32le','-ac','1','-ar','48000','-'])
+ raw=subprocess.check_output([os.environ.get('GAMEDIRECTOR_FFMPEG','ffmpeg'),'-v','error','-i',sound_job['video'],'-vn','-f','f32le','-ac','1','-ar','48000','-'])
  samples=array.array('f',raw)
  def rms(a,b):
   section=samples[int(a*48000):int(b*48000)];return math.sqrt(sum(x*x for x in section)/len(section))
@@ -120,7 +120,7 @@ try:
  before_mix=state['starts'];voiced['audio'][0]['volume']=.25;mix_job=wait(call('jobs',req(voiced)));assert state['starts']==before_mix and mix_job['reusedShots']==2
  # Container/video length and timestamp offsets cannot invent playable samples.
  offset=root/'offset.m4a'
- subprocess.run([str(repo/'.tools/media/ffmpeg'),'-v','error','-f','lavfi','-i','color=size=16x16:duration=5','-f','lavfi','-i','sine=duration=1','-filter:a','asetpts=PTS+2/TB','-c:v','libx264','-c:a','aac',str(offset)],check=True)
+ subprocess.run([os.environ.get('GAMEDIRECTOR_FFMPEG','ffmpeg'),'-v','error','-f','lavfi','-i','color=size=16x16:duration=5','-f','lavfi','-i','sine=duration=1','-filter:a','asetpts=PTS+2/TB','-c:v','libx264','-c:a','aac',str(offset)],check=True)
  short_asset=call('projects/fixture/media',dict(name='offset.m4a',base64=base64.b64encode(offset.read_bytes()).decode()))
  assert .95 < short_asset['duration'] < 1.1,short_asset
  impossible=copy.deepcopy(voiced);impossible['audio'][0].update(mediaId=short_asset['id'],sourceStart=4)
@@ -132,8 +132,14 @@ try:
  forbidden=source/'output'
  refusal=subprocess.run(['dotnet',str(repo/'src/GameDirector.Workbench/bin/Debug/net8.0/gamedirector-workbench.dll'),'--data',str(forbidden),'--port','0'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
  assert refusal.returncode!=0 and not forbidden.exists()
- # A dangling ownership symlink must not create the game's target file.
- trap=root/'trap-store';trap.mkdir();(trap/'.owner').symlink_to(source/'should-not-exist')
+ # Reparse-point ownership paths cannot redirect writes into game source.
+ # Windows junctions exercise this contract without symbolic-link privileges.
+ trap=root/'trap-store';trap.mkdir()
+ if os.name == 'nt':
+  def psquote(value):return "'"+str(value).replace("'","''")+"'"
+  subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',
+      "$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path "+psquote(trap/'.owner')+' -Target '+psquote(source)+' | Out-Null'],check=True)
+ else:(trap/'.owner').symlink_to(source/'should-not-exist')
  refusal=subprocess.run(['dotnet',str(repo/'src/GameDirector.Workbench/bin/Debug/net8.0/gamedirector-workbench.dll'),'--data',str(trap),'--port','0'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
  assert refusal.returncode!=0 and not (source/'should-not-exist').exists()
  assert hashlib.sha256((source/'source.txt').read_bytes()).hexdigest()==source_hash

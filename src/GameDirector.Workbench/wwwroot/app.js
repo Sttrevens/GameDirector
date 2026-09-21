@@ -96,8 +96,9 @@ function renderReadiness(report){const panel=$('readiness');panel.replaceChildre
 async function openMediaInstall(){
   const status=await api('media/install');const list=$('mediaOptions');list.replaceChildren();
   for(const o of status.options){const e=node('div',undefined,'media-option');e.append(node('b',o.label),node('p',o.detail),node('small',o.license));
+    let descriptor;if(o.kind==='userBundle'){descriptor=node('input');descriptor.type='text';descriptor.placeholder='套件描述文件的完整路径';descriptor.setAttribute('aria-label','离线套件描述文件路径');e.append(descriptor);}
     const b=node('button','安装');b.onclick=async()=>{b.disabled=true;$('mediaInstallStatus').textContent='正在安装，可能需要几分钟…';
-      try{const r=await api('media/install',{optionId:o.id});$('mediaInstallStatus').textContent='安装完成。';notice('编码组件已就绪。');$('mediaDialog').close();}
+      try{const r=await api('media/install',{optionId:o.id,descriptorPath:descriptor?.value.trim()||null});$('mediaInstallStatus').textContent=r.note||'安装完成。';notice('编码组件已就绪。');$('mediaDialog').close();}
       catch(e){$('mediaInstallStatus').textContent=e.message;}finally{b.disabled=false;}};
     e.append(b);list.append(e);}
   if(!status.options.length)list.append(node('p','这个平台暂时没有一键安装方式，请按准备检查中的提示手动配置。','muted'));
@@ -119,7 +120,7 @@ function renderAssets(){
   if(found.length>100)list.append(node('p',`还有 ${found.length-100} 项，请搜索缩小范围。`,'muted'));
   if(!list.children.length)list.append(node('p',p?'尚无匹配资产。启动离线拍摄场景后刷新，或从引擎窗口同步资产。':'接入项目后查看真实角色、动作与机位。','muted'));
 }
-function renderShots(){const list=$('shots');list.replaceChildren();updateMeta();if(!film){list.append(node('p','你的镜头会排列在这里。','muted'));return;}
+function renderShots(){const list=$('shots');list.replaceChildren();updateMeta();fillCameraShots();if(!film){list.append(node('p','你的镜头会排列在这里。','muted'));return;}
   for(const scene of film.scenes)for(const shot of scene.shots){const e=node('article',undefined,'shot');const top=node('div',undefined,'shot-top');top.append(node('span',shot.id),node('span',scene.id));e.append(top);
     const purpose=node('input');purpose.value=shot.purpose;purpose.setAttribute('aria-label',shot.id+' 镜头意图');purpose.onchange=()=>{shot.purpose=purpose.value;syncFilm();};e.append(purpose);
     const m=project()?.manifest;for(const [field,title,items] of [['subject','角色',m?.roles.map(x=>x.id)||[]],['from','机位',m?.locations.map(x=>x.id)||[]],['type','运镜',m?.shotTypes||[]],['frame','景别',m?.frameTypes||[]]]){const label=node('label',title), select=node('select');select.setAttribute('aria-label',shot.id+' '+title);for(const x of new Set([shot.camera[field],...items].filter(Boolean)))select.add(new Option(x,x));select.value=shot.camera[field];select.onchange=()=>{shot.camera[field]=select.value;syncFilm();};label.append(select);e.append(label);}
@@ -148,7 +149,7 @@ async function switchDocument(id){documentId=id;draftSession=null;setFilm(null,f
 $('project').onchange=async()=>{
   selected=$('project').value;documentId='default';draftSession=null;setFilm(null,false);
   $('video').pause();$('video').removeAttribute('src');$('video').hidden=true;$('emptyScreen').hidden=false;$('download').hidden=true;$('viewerStatus').textContent='初剪预览 · 尚未出片';
-  try{if(selected)await loadDraft();await loadMedia();renderAssets();renderJobs();renderConnection();await refreshDocuments();}catch(e){notice(e.message,true);}
+  try{if(selected)await loadDraft();await loadMedia();renderAssets();renderJobs();renderConnection();await refreshDocuments();await catalogStatus();await renderRecords();}catch(e){notice(e.message,true);}
 };
 $('document').onchange=()=>switchDocument($('document').value).catch(e=>notice(e.message,true));
 action('newDocument',async()=>{if(!selected)throw Error('请先选择项目。');await switchDocument(crypto.randomUUID());setFilm({version:1,title:'新的作品',frameRate:catalog.defaults.frameRate,width:catalog.defaults.width,height:catalog.defaults.height,scenes:[],audio:[],subtitles:[]});await saveDocument();await refreshDocuments();});
@@ -218,8 +219,18 @@ $('connectForm').onsubmit=async e=>{
   }catch(error){if($('connectDialog').open){$('connectError').textContent=error.message;$('connectError').hidden=false;}else notice(error.message,true);}
   finally{button.disabled=false;}
 };
-$('settingsForm').onsubmit=async e=>{e.preventDefault();try{await api('provider',{endpoint:$('apiEndpoint').value,model:$('model').value,apiKey:$('apiKey').value});$('apiKey').value='';await providerStatus();$('settingsDialog').close();notice('连接已配置；尚未调用模型。');}catch(e){notice(e.message,true);}};
+$('settingsForm').onsubmit=async e=>{e.preventDefault();try{await api('provider',{endpoint:$('apiEndpoint').value,model:$('model').value,apiKey:$('apiKey').value});$('apiKey').value='';await providerStatus();
+  if($('jevEndpoint').value.trim())await api('decisions/provider',{endpoint:$('jevEndpoint').value.trim(),model:$('jevModel').value.trim(),apiKey:$('jevApiKey').value});
+  // 阈值可留空：空白即未校准（null），绝不是 0。只有 0–1 的数字才会被保存。
+  const policies={version:1,semanticReview:{enabled:$('jevReviewOn').checked,minConfidence:null}};
+  for(const [minId,onId,key] of [['jevPerfMin','jevPerfOn','performanceMatch'],['jevCamMin','jevCamOn','cameraChoice'],['jevAudioMin','jevAudioOn','audioMatch'],['jevRankMin','jevRankOn','filmRanking']]){
+    const raw=$(minId).value.trim(),value=raw===''?null:Number(raw);
+    if(value!==null&&(!Number.isFinite(value)||value<0||value>1))throw Error('置信度阈值需在 0 与 1 之间，或留空表示未校准。');
+    policies[key]={enabled:$(onId).checked,minConfidence:value};}
+  await api('decisions/policies',policies);
+  $('jevApiKey').value='';await decisionStatus();$('settingsDialog').close();notice('连接已配置；尚未调用模型。');}catch(e){notice(e.message,true);}};
 action('disconnectProvider',async()=>{await api('provider',{endpoint:'',model:'',apiKey:''});await providerStatus();$('settingsDialog').close();});
+action('disconnectDecisions',async()=>{await api('decisions/provider',{endpoint:'',model:'',apiKey:''});$('jevEndpoint').value='';$('jevModel').value='';await decisionStatus();});
 action('refresh',async()=>{if(!selected)throw Error('请先接入项目。');await checkProjectConnection(selected);});
 action('starter',async()=>{if(!selected)throw Error('请先接入项目。');const id=selected;const value=await api(`projects/${id}/starter`);if(selected===id)setFilm(value);});
 action('importButton',()=>$('importFile').click());$('importFile').onchange=async()=>{try{const file=$('importFile').files[0];if(!file)return;if(file.size>catalog.limits.maxScriptBytes)throw Error('脚本超过 '+Math.round(catalog.limits.maxScriptBytes/1048576)+' MB。');const f=JSON.parse(await file.text());if(f.version!==1||!Array.isArray(f.scenes))throw Error('请导入 version 1 的 FilmPlan 拍摄脚本。');setFilm(f);notice('脚本已载入，出片前会校验资产与时间线。');}catch(e){notice(e.message,true);}finally{$('importFile').value='';}};
@@ -233,6 +244,7 @@ try{
   const engineSelect=$('engine');engineSelect.replaceChildren(...catalog.engines.map(e=>new Option(e.label,e.id)));
   if(catalog.limits.maxAudioFormats)$('audioFile').accept=catalog.limits.maxAudioFormats.join(',');
   await refresh();if(selected&&!draftSession)await loadDraft();await refreshDocuments();await providerStatus();await loadMedia();const storage=await api('storage');$('storageInfo').textContent='影片存储：'+storage.root;
+  await decisionStatus();await catalogStatus();await renderRecords();
 }catch(e){notice(e.message,true);}
 setInterval(()=>refresh().catch(()=>{$('connection').textContent='工作台连接中断';}),3000);
 
@@ -253,3 +265,101 @@ $('audioFile').onchange=async()=>{try{const id=selected,file=$('audioFile').file
 action('addAudio',()=>{const f=needFilm(),m=media.find(a=>a.id===$('audioMedia').value);if(!m)throw Error('请先导入声音文件。');f.audio??=[];f.audio.push({id:'sound-'+crypto.randomUUID(),mediaId:m.id,bus:'sfx',at:0,sourceStart:0,duration:Math.min(m.duration,f.scenes.flatMap(s=>s.shots).reduce((n,s)=>n+s.end-s.start,0)),volume:1,fadeIn:0,fadeOut:0});syncFilm();renderAudio();});
 action('applyCaptions',()=>{const f=needFilm();f.subtitles=$('captions').value.split('\n').filter(l=>l.trim()).map(l=>{const [a,b,...text]=l.split('|');if(!text.length||!a.trim()||!b.trim()||!Number.isFinite(Number(a))||!Number.isFinite(Number(b)))throw Error('字幕格式：开始秒 | 结束秒 | 内容');return {start:Number(a),end:Number(b),text:text.join('|').trim()};});syncFilm();notice('字幕已应用，制作前会检查时间范围。');});
 action('exportButton',()=>{const f=needFilm(),url=URL.createObjectURL(new Blob([JSON.stringify(f,null,2)],{type:'application/json'})),a=node('a');a.href=url;a.download=f.title+'.film.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+
+// ---- 决策助手（Jev 选项决策）----
+let decisions=null;
+const outcomeLabels={selected:'已选定','needs-review':'待人工复核','no-match':'无匹配',completed:'已完成 · 仅供人工查阅'};
+const taskLabels={'performance-match':'表演匹配','camera-choice':'镜头相机','audio-match':'声音匹配','film-ranking':'候选排序','semantic-review':'语义复核'};
+async function decisionStatus(){decisions=await api('decisions/provider');const p=decisions.policies;
+  $('decisionStatus').textContent=decisions.configured?`决策模型 ${decisions.model} · 密钥仅存内存，重启后清除`:'未配置决策模型。在“导演连接”中设置；外部 Agent 也可提交候选。';
+  if(decisions.configured){$('jevEndpoint').value=decisions.endpoint||'';$('jevModel').value=decisions.model||'';}
+  for(const [key,on,min] of [['performanceMatch','jevPerfOn','jevPerfMin'],['cameraChoice','jevCamOn','jevCamMin'],['audioMatch','jevAudioOn','jevAudioMin'],['filmRanking','jevRankOn','jevRankMin']]){$(on).checked=!!p[key].enabled;$(min).value=p[key].minConfidence??'';}
+  $('jevReviewOn').checked=!!p.semanticReview?.enabled;
+}
+function renderDecisionOutcome(panel,record){
+  panel.replaceChildren();const e=node('div',undefined,'decision-result');
+  e.append(node('div',`${outcomeLabels[record.outcome]||record.outcome}${record.selectedCandidateId?' · '+record.selectedCandidateId:''}`,'outcome'),node('div',record.reason||'','reason'));
+  for(const a of record.answers||[]){
+    if(a.choice&&a.confidence!=null)e.append(node('small',`选择 ${a.choice} · 置信度 ${(a.confidence*100).toFixed(0)}%`));
+    if(a.noul!=null)e.append(node('small',`${a.questionId} · 成立概率 ${(a.noul*100).toFixed(0)}%`));
+    if(a.score!=null)e.append(node('small',`${a.questionId} · 评分 ${a.score}${a.confidence!=null?' · 置信度 '+(a.confidence*100).toFixed(0)+'%':''}`));
+    const probs=Object.entries(a.probabilities||{}).sort((x,y)=>y[1]-x[1]);
+    for(const [id,p] of probs.slice(0,6)){const row=node('div',undefined,'prob');row.append(node('span',id.length>24?id.slice(0,24)+'…':id));const bar=node('div',undefined,'bar');bar.style.width=Math.max(2,Math.round(p*120))+'px';row.append(bar,node('small',(p*100).toFixed(0)+'%'));e.append(row);}
+  }
+  panel.append(e);return e;
+}
+async function catalogStatus(){
+  if(!selected){$('catalogStatus').textContent='';return;}
+  const s=await api(`projects/${selected}/catalog`);
+  $('catalogStatus').textContent=s.present?(s.fresh?`目录有效 · ${s.performances} 条表演 · ${s.evidenceBacked} 条有证据支撑`:`目录已导入但当前不可用：${(s.errors||[]).slice(0,2).join('；')||'清单已变化'}`):'尚未导入表演目录。导入 JSON，或从当前清单生成骨架后补充含义与证据。';
+}
+action('catalogImport',()=>{if(!selected)throw Error('请先选择项目。');$('catalogFile').click();});
+action('catalogExport',async()=>{if(!selected)throw Error('请先选择项目。');const catalog=await api(`projects/${selected}/catalog/content`);const url=URL.createObjectURL(new Blob([JSON.stringify(catalog,null,2)],{type:'application/json'}));const link=node('a');link.href=url;link.download=`${selected}.performances.json`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+$('catalogFile').onchange=async()=>{try{const file=$('catalogFile').files[0];if(!file)return;const catalog=JSON.parse(await file.text());const s=await api(`projects/${selected}/catalog`,catalog);await catalogStatus();notice(s.fresh?'表演目录已导入并通过校验。':'目录已导入，但校验提示需要处理。');}catch(e){notice(e.message,true);}finally{$('catalogFile').value='';}};
+action('catalogScaffold',async()=>{if(!selected)throw Error('请先选择项目。');const r=await api(`projects/${selected}/catalog/scaffold`,{});await catalogStatus();notice(r.scaffolded===false?'已存在表演目录，骨架不会覆盖它；如需替换请显式导入新文件。':'已生成目录骨架，请补充每条表演的含义与证据后再用于匹配。');});
+action('perfMatch',async()=>{
+  if(!selected)throw Error('请先选择项目。');const intent=$('perfIntent').value.trim();if(!intent)throw Error('请写下表演意图。');
+  notice('正在向决策模型提问…');const r=await api(`projects/${selected}/decisions/performance-match`,{requestId:crypto.randomUUID(),intent});
+  renderDecisionOutcome($('perfResults'),r);await renderRecords();notice(outcomeLabels[r.outcome]||r.outcome);
+});
+function fillCameraShots(){const sel=$('cameraShot');if(!sel)return;const before=sel.value;sel.replaceChildren();for(const scene of film?.scenes||[])for(const shot of scene.shots)sel.add(new Option(`${shot.id} · ${(shot.purpose||'').slice(0,18)}`,shot.id));if([...sel.options].some(o=>o.value===before))sel.value=before;}
+action('cameraSuggest',async()=>{
+  const f=needFilm();const shotId=$('cameraShot').value;if(!shotId)throw Error('请先选择镜头。');
+  const list=await api(`projects/${selected}/decisions/camera-choice/suggest`,{shotId,film:f});
+  $('cameraCandidates').value=JSON.stringify(list.filter(c=>c.compiles).map(c=>({id:c.id,camera:c.camera})),null,2);
+  notice(`已生成 ${list.filter(c=>c.compiles).length} 个可编译候选（清单词表枚举，可编辑后再决策）。`);
+});
+action('cameraDecide',async()=>{
+  const f=needFilm();const shotId=$('cameraShot').value;if(!shotId)throw Error('请先选择镜头。');
+  const intent=$('cameraIntent').value.trim();if(!intent)throw Error('请写下相机意图。');
+  let candidates=null;const text=$('cameraCandidates').value.trim();
+  if(text){candidates=JSON.parse(text);if(!Array.isArray(candidates)||!candidates.length)throw Error('候选相机需要非空 JSON 数组。');}
+  notice('正在向决策模型提问…');
+  const r=await api(`projects/${selected}/decisions/camera-choice`,{requestId:crypto.randomUUID(),shotId,intent,documentId,documentRevision:draftSession?.document?.revision??null,film:f,candidates});
+  const e=renderDecisionOutcome($('cameraResults'),r);
+  if(r.outcome==='selected'&&r.proposal){const b=node('button','载入相机方案（只改该镜头相机）');b.onclick=()=>{setFilm(structuredClone(r.proposal));notice('相机方案已载入本地草稿，其余镜头/表演/声音保持不变；保存草稿时会检查版本。');};e.append(b);}
+  await renderRecords();
+});
+action('audioMatch',async()=>{
+  if(!selected)throw Error('请先选择项目。');const intent=$('audioIntent').value.trim();if(!intent)throw Error('请写下声音意图。');
+  notice('正在向决策模型提问…');const r=await api(`projects/${selected}/decisions/audio-match`,{requestId:crypto.randomUUID(),intent,bus:$('audioBus').value});
+  const e=renderDecisionOutcome($('audioResults'),r);
+  if(r.outcome==='selected'&&r.selectedCandidateId){const m=media.find(a=>a.id===r.selectedCandidateId);if(m){const b=node('button',`加入声音轨：${m.name}`);b.onclick=()=>{const f=needFilm();f.audio??=[];f.audio.push({id:'sound-'+crypto.randomUUID(),mediaId:m.id,bus:$('audioBus').value,at:0,sourceStart:0,duration:Math.min(m.duration,f.scenes.flatMap(s=>s.shots).reduce((n,s)=>n+s.end-s.start,0)),volume:1,fadeIn:0,fadeOut:0});syncFilm();renderAudio();notice('已加入声音轨，可继续调整时间。');};e.append(b);}}
+  await renderRecords();
+});
+async function renderRecords(){
+  if(!selected)return;const list=await api(`projects/${selected}/decisions`);const panel=$('decisionRecords');panel.replaceChildren();
+  for(const r of list.slice(0,12)){const e=node('div',undefined,'decision-record');e.append(node('span',`${taskLabels[r.task]||r.task} · ${outcomeLabels[r.outcome]||r.outcome}${r.selectedCandidateId?' · '+r.selectedCandidateId.slice(0,30):''}`),node('small',`${new Date(r.createdAt).toLocaleString()} · ${r.reason||''}`));panel.append(e);}
+  if(!list.length)panel.append(node('p','还没有决策记录。','muted'));
+}
+action('recordsRefresh',renderRecords);
+$('audioMedia').onchange=()=>{const m=media.find(a=>a.id===$('audioMedia').value);$('mediaDescription').value=m?.description||'';};
+action('saveMediaDescription',async()=>{const m=media.find(a=>a.id===$('audioMedia').value);if(!m)throw Error('请先选择已导入声音。');await api(`projects/${selected}/media/${m.id}`,{description:$('mediaDescription').value||null});await loadMedia();notice('声音描述已保存，可用于声音匹配。');});
+
+// ---- 候选影片比较与语义复核（均为方案准备阶段；不评判渲染画面）----
+function renderRanking(panel,record){
+  const e=renderDecisionOutcome(panel,record);
+  if(record.ranking?.length){const table=node('div');
+    record.ranking.forEach((r,i)=>{const row=node('div',undefined,'prob');
+      row.append(node('span',`#${i+1} ${r.candidateId}`));
+      row.append(node('small',(r.score!=null?`得分 ${r.score}`:'未评分')+(r.confidence!=null?` · 置信度 ${(r.confidence*100).toFixed(0)}%`:'')));
+      table.append(row);if(r.evidence)table.append(node('small',r.evidence));});
+    e.append(table);}
+  return e;
+}
+action('rankCompare',async()=>{
+  if(!selected)throw Error('请先选择项目。');const brief=$('rankBrief').value.trim();if(!brief)throw Error('请写下评选简报。');
+  const candidates=[];const f=film;
+  if(f)candidates.push({id:'current',rationale:'当前草稿',film:f});
+  const text=$('rankCandidates').value.trim();
+  if(text){const external=JSON.parse(text);if(!Array.isArray(external))throw Error('外部候选需要 JSON 数组。');for(const c of external)candidates.push(c);}
+  if(!candidates.length)throw Error('没有可比较的候选：请打开一个作品草稿，或提供外部候选 JSON。');
+  notice('正在向决策模型提问…');const r=await api(`projects/${selected}/decisions/film-ranking`,{requestId:crypto.randomUUID(),brief,candidates});
+  renderRanking($('rankResults'),r);await renderRecords();notice(outcomeLabels[r.outcome]||r.outcome);
+});
+action('reviewRun',async()=>{
+  if(!selected)throw Error('请先选择项目。');const subject=$('reviewSubject').value.trim();if(!subject)throw Error('请粘贴被复核文本。');
+  const checks=JSON.parse($('reviewChecks').value||'[]');if(!Array.isArray(checks)||!checks.length)throw Error('检查项需要非空 JSON 数组。');
+  notice('正在向决策模型提问…');const r=await api(`projects/${selected}/decisions/semantic-review`,{requestId:crypto.randomUUID(),subject,label:film?`作品《${film.title}》的文本`:null,checks});
+  renderDecisionOutcome($('reviewResults'),r);await renderRecords();notice(outcomeLabels[r.outcome]||r.outcome);
+});

@@ -2,11 +2,29 @@ using GameDirector.Client;
 
 namespace GameDirector.Workbench;
 
-public sealed record MediaImport(string Name, string Base64);
-public sealed record MediaAsset(string Id, string Name, string Extension, double Duration, long Bytes);
+public sealed record MediaImport(string Name, string Base64, string? Description = null);
+public sealed record MediaDescription(string? Description);
+public sealed record MediaAsset(string Id, string Name, string Extension, double Duration, long Bytes)
+{
+    /// <summary>Optional curator-authored description (what the sound is for).
+    /// Decision matching judges names and descriptions; the bytes are content-hashed.</summary>
+    public string? Description { get; set; }
+}
 
 public static class MediaLibrary
 {
+    public const int MaxDescriptionChars = 500;
+
+    public static MediaAsset Describe(Studio studio, string project, string id, string? description)
+    {
+        Resolve(studio, project, id); // proves the stored bytes still match the id
+        if (description != null && description.Length > MaxDescriptionChars) throw new ArgumentException("Description limit is " + MaxDescriptionChars + " characters.");
+        var meta = studio.StorePath("media", project, id + ".json");
+        var asset = DslJson.Load<MediaAsset>(meta);
+        asset.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        DslJson.SaveAtomic(meta, asset);
+        return asset;
+    }
     public static IEnumerable<MediaAsset> List(Studio studio, string project)
     {
         studio.Project(project);
@@ -33,6 +51,8 @@ public static class MediaLibrary
             var path = studio.StorePath("media", project, id + ".json");
             if (File.Exists(path)) { Resolve(studio, project, id); return DslJson.Load<MediaAsset>(path); }
             var asset = new MediaAsset(id, input.Name, extension, sound.Duration, new FileInfo(sound.File).Length);
+            if (input.Description != null && input.Description.Length > MaxDescriptionChars) throw new ArgumentException("Description limit is " + MaxDescriptionChars + " characters.");
+            asset.Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim();
             var destination = studio.StorePath("media", project, id + extension);
             try { File.Copy(sound.File, destination); } catch (IOException) when (File.Exists(destination) && MediaTools.Hash(destination) == id) { }
             DslJson.SaveAtomic(path, asset); return asset;

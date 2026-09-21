@@ -9,7 +9,7 @@ namespace GameDirector.Client;
 /// Resolution order is fixed: explicit environment override, then the runtime
 /// layout bundled next to the app, then well-known package-manager install
 /// locations, then the system PATH.</summary>
-public sealed record MediaToolResolution(string Name, string Path, string Source);
+public sealed record MediaToolResolution(string Name, string Path, string Source, bool Broken = false);
 
 public static class MediaTools
 {
@@ -47,8 +47,14 @@ public static class MediaTools
         var file = tool + (OperatingSystem.IsWindows() ? ".exe" : "");
         MediaToolResolution result;
         var overridePath = Environment.GetEnvironmentVariable(variable);
-        if (!string.IsNullOrWhiteSpace(overridePath) && File.Exists(overridePath))
-            result = new MediaToolResolution(tool, overridePath, variable);
+        if (!string.IsNullOrWhiteSpace(overridePath))
+        {
+            // An explicit override is a promise: a missing target is reported
+            // broken rather than silently falling back to another ffmpeg.
+            result = File.Exists(overridePath)
+                ? new MediaToolResolution(tool, overridePath, variable)
+                : new MediaToolResolution(tool, overridePath, variable + " (not found)", Broken: true);
+        }
         else
         {
             var candidates = new[]
@@ -78,7 +84,7 @@ public static class MediaTools
     public static async Task<string> Run(string executable,IEnumerable<string> args,CancellationToken ct=default)
     {
         if(executable is "ffmpeg" or "ffprobe") executable = Resolve(executable).Path;
-        var info=new ProcessStartInfo(executable){UseShellExecute=false,RedirectStandardError=true,RedirectStandardOutput=true};
+        var info=new ProcessStartInfo(executable){UseShellExecute=false,CreateNoWindow=true,RedirectStandardError=true,RedirectStandardOutput=true};
         foreach(var a in args)info.ArgumentList.Add(a);
         using var p=Process.Start(info)??throw new InvalidOperationException("could not start "+executable);
         var error=p.StandardError.ReadToEndAsync(ct);var output=p.StandardOutput.ReadToEndAsync(ct);
@@ -94,11 +100,35 @@ public static class MediaTools
     /// <summary>Fail fast unless the resolved tools can honor this profile:
     /// the configured encoder, the filters burning captions needs, ffprobe, and
     /// the pinned subtitle font actually present and unmodified.</summary>
-    public static async Task EnsureEncoding(MediaProfile profile,bool subtitles,CancellationToken ct=default)
+    public static Task EnsureEncoding(MediaProfile profile,bool subtitles,CancellationToken ct=default)
     {
-        var encoders=await Run("ffmpeg",new[]{"-hide_banner","-encoders"},ct);
+        foreach(var tool in new[]{"ffmpeg","ffprobe"})
+        {
+            var resolution=Resolve(tool);
+            if(resolution.Broken)
+                throw new InvalidOperationException(resolution.Source.Split(' ')[0]+" points to '"+resolution.Path+"' which does not exist; fix the path or unset the variable.");
+        }
+        return EnsureEncodingCore(profile,subtitles,Resolve("ffmpeg").Path,Resolve("ffprobe").Path,
+            "set GAMEDIRECTOR_FFMPEG to a compatible executable",ct);
+    }
+
+    /// <summary>Full contract check against two exact executables — used to prove
+    /// staged binaries BEFORE activation. No resolution and no environment
+    /// overrides: the given paths are the only tools consulted.</summary>
+    public static Task EnsureEncoding(MediaProfile profile,bool subtitles,string ffmpegPath,string ffprobePath,CancellationToken ct=default)
+    {
+        foreach(var(tool,path)in new[]{("ffmpeg",ffmpegPath),("ffprobe",ffprobePath)})
+            if(!File.Exists(path))
+                throw new InvalidOperationException("staged "+tool+" is missing: "+path);
+        return EnsureEncodingCore(profile,subtitles,Path.GetFullPath(ffmpegPath),Path.GetFullPath(ffprobePath),
+            "the staged ffmpeg is not a compatible executable",ct);
+    }
+
+    private static async Task EnsureEncodingCore(MediaProfile profile,bool subtitles,string ffmpegPath,string ffprobePath,string encoderHint,CancellationToken ct)
+    {
+        var encoders=await Run(ffmpegPath,new[]{"-hide_banner","-encoders"},ct);
         if(!System.Text.RegularExpressions.Regex.IsMatch(encoders,@"(?m)^\s*\S+\s+"+System.Text.RegularExpressions.Regex.Escape(profile.VideoCodec)+@"\s"))
-            throw new InvalidOperationException("FFmpeg requires the "+profile.VideoCodec+" encoder; set GAMEDIRECTOR_FFMPEG to a compatible executable");
+            throw new InvalidOperationException("FFmpeg requires the "+profile.VideoCodec+" encoder; "+encoderHint);
         var filters=profile.RequiredFilters(subtitles);
         if(filters.Count>0) {
             var font=profile.SubtitleFont.Locate();
@@ -106,12 +136,12 @@ public static class MediaTools
                 throw new InvalidOperationException("Subtitle font is missing. Reinstall the complete GameDirector runtime, including its Fonts directory.");
             if (Hash(font)!=profile.SubtitleFont.Sha256)
                 throw new InvalidOperationException("Subtitle font differs from the pinned delivery. Reinstall the unmodified GameDirector runtime fonts.");
-            var available=await Run("ffmpeg",new[]{"-hide_banner","-filters"},ct);
+            var available=await Run(ffmpegPath,new[]{"-hide_banner","-filters"},ct);
             foreach(var filter in filters)
                 if(!System.Text.RegularExpressions.Regex.IsMatch(available,@"(?m)^\s*\S+\s+"+System.Text.RegularExpressions.Regex.Escape(filter)+@"\s"))
-                    throw new InvalidOperationException("This edit requires FFmpeg with "+filter+" support; set GAMEDIRECTOR_FFMPEG before rendering");
+                    throw new InvalidOperationException("This edit requires FFmpeg with "+filter+" support; "+encoderHint);
         }
-        await Run("ffprobe",new[]{"-version"},ct);
+        await Run(ffprobePath,new[]{"-version"},ct);
     }
 
     public static async Task<JsonObject> Probe(string file,CancellationToken ct=default) =>
