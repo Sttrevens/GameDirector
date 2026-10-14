@@ -8,6 +8,7 @@ obj/
 .DS_Store
 
 # Local tool output
+node_modules/
 out/
 captures/
 .tools/
@@ -23,3 +24,7 @@ output/
 # Local verification output
 __pycache__/
 TestResults/
+
+# Godot import/render/editor caches (sources and the addon are committed)
+.godot/
+*.import

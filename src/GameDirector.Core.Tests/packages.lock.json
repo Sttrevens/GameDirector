@@ -104,7 +104,7 @@
       "gamedirector.client": {
         "type": "Project",
         "dependencies": {
-          "GameDirector.Core": "[0.2.0-alpha.1, )"
+          "GameDirector.Core": "[0.1.0, )"
         }
       },
       "gamedirector.core": {

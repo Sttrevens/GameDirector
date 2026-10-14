@@ -1,4 +1,5 @@
 using GameDirector.Client;
+using GameDirector.Core.Dsl;
 using Xunit;
 
 namespace GameDirector.Core.Tests;
@@ -10,7 +11,7 @@ public class DistributionEnvCollection { }
 /// valid, schema/product drift is rejected, sibling resolution honors platform
 /// executable extensions, and the runtime manifest gates compatibility.</summary>
 [Collection("DistributionEnv")]
-public class DistributionManifestTests
+public class DistributionManifestTests : TempPaths
 {
     private static string RepoRoot()
     {
@@ -25,8 +26,8 @@ public class DistributionManifestTests
     public void RepoManifestIsValidAndComplete()
     {
         var manifest = DistributionManifest.Load(Path.Combine(RepoRoot(), "tools", "distribution.json"));
-        Assert.Equal("GameDirector", manifest.Product);
-        Assert.Equal(1, manifest.ProtocolVersion);
+        Assert.Equal(WorkbenchService.Product, manifest.Product);
+        Assert.Equal(WorkbenchService.ProtocolVersion, manifest.ProtocolVersion);
         Assert.Contains("win-x64", manifest.SupportedPlatforms);
         Assert.Contains("osx-arm64", manifest.SupportedPlatforms);
         foreach (var rid in manifest.SupportedPlatforms)
@@ -55,7 +56,25 @@ public class DistributionManifestTests
     {
         var manifest = File.ReadAllText(Path.Combine(RepoRoot(), "tools", "distribution.json"));
         Assert.Throws<InvalidDataException>(() => DistributionManifest.Parse(manifest.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 99")));
-        Assert.Throws<InvalidDataException>(() => DistributionManifest.Parse(manifest.Replace("\"product\": \"GameDirector\"", "\"product\": \"Other\"")));
+        Assert.Throws<InvalidDataException>(() => DistributionManifest.Parse(manifest.Replace("\"product\": \"" + WorkbenchService.Product + "\"", "\"product\": \"Other\"")));
+    }
+
+    [Theory]
+    [InlineData("../outside")] [InlineData("/outside")] [InlineData("..\\outside")]
+    [InlineData("a/../../outside")] [InlineData("C:\\outside")] [InlineData("a//b")]
+    public void DistributionBundleParentAndEveryAppRejectEscapingPaths(string unsafePath)
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "tools/distribution.json")))!;
+        json["unity"]!["bundledRuntimeParent"] = unsafePath;
+        Assert.Throws<InvalidDataException>(() => DistributionManifest.Parse(json.ToJsonString()));
+        json["unity"]!["bundledRuntimeParent"] = "Tools~";
+        foreach (var app in new[] { "cli", "mcp", "workbench" })
+        {
+            var original = json["apps"]![app]!["executable"]!.GetValue<string>();
+            json["apps"]![app]!["executable"] = unsafePath;
+            Assert.Throws<InvalidDataException>(() => DistributionManifest.Parse(json.ToJsonString()));
+            json["apps"]![app]!["executable"] = original;
+        }
     }
 
     [Fact]
@@ -70,11 +89,11 @@ public class DistributionManifestTests
     {
         var runtime = new RuntimeManifest
         {
-            Product = "GameDirector", Version = "1", Rid = "win-x64", ProtocolVersion = 1, App = "workbench",
+            Product = WorkbenchService.Product, Version = "1", Rid = "win-x64", ProtocolVersion = WorkbenchService.ProtocolVersion, App = "workbench",
         };
-        Assert.Null(runtime.CompatibilityFailure("win-x64", 1));
-        Assert.Contains("osx-arm64", runtime.CompatibilityFailure("osx-arm64", 1));
-        Assert.Contains("protocol", runtime.CompatibilityFailure("win-x64", 2));
+        Assert.Null(runtime.CompatibilityFailure("win-x64", WorkbenchService.ProtocolVersion));
+        Assert.Contains("osx-arm64", runtime.CompatibilityFailure("osx-arm64", WorkbenchService.ProtocolVersion));
+        Assert.Contains("protocol", runtime.CompatibilityFailure("win-x64", WorkbenchService.ProtocolVersion + 1));
         var parsed = RuntimeManifest.Parse(System.Text.Json.JsonSerializer.Serialize(runtime,
             new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
         Assert.Equal("win-x64", parsed.Rid);
@@ -84,7 +103,7 @@ public class DistributionManifestTests
     [Fact]
     public void RuntimeManifestVerifiesDeclaredHashes()
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-runtime-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-runtime-");
         Directory.CreateDirectory(folder);
         try
         {
@@ -92,7 +111,7 @@ public class DistributionManifestTests
             var good = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(new byte[] { 1, 2, 3 })).ToLowerInvariant();
             var runtime = new RuntimeManifest
             {
-                Product = "GameDirector", Version = "1", Rid = "win-x64", ProtocolVersion = 1, App = "x",
+                Product = WorkbenchService.Product, Version = "1", Rid = "win-x64", ProtocolVersion = WorkbenchService.ProtocolVersion, App = "x",
                 Executables = new[] { "tool" },
                 Sha256 = new Dictionary<string, string> { ["tool"] = good },
             };
@@ -117,7 +136,7 @@ public class DistributionManifestTests
     {
         var runtime = new RuntimeManifest
         {
-            Product = "GameDirector", Version = "1", Rid = "win-x64", ProtocolVersion = 1, App = "x",
+            Product = WorkbenchService.Product, Version = "1", Rid = "win-x64", ProtocolVersion = WorkbenchService.ProtocolVersion, App = "x",
             Executables = new[] { "tool" },
             Sha256 = new Dictionary<string, string> { ["tool"] = new string('a', 64) },
         };
@@ -126,7 +145,7 @@ public class DistributionManifestTests
         Assert.Throws<InvalidDataException>(runtime.ValidateDeclaredPaths);
         var rooted = new RuntimeManifest
         {
-            Product = "GameDirector", Version = "1", Rid = "win-x64", ProtocolVersion = 1, App = "x",
+            Product = WorkbenchService.Product, Version = "1", Rid = "win-x64", ProtocolVersion = WorkbenchService.ProtocolVersion, App = "x",
             Executables = new[] { "/bin/sh" },
         };
         Assert.Throws<InvalidDataException>(rooted.ValidateDeclaredPaths);
@@ -137,7 +156,7 @@ public class DistributionManifestTests
     public void RootOverrideHonorsExplicitness()
     {
         var previous = Environment.GetEnvironmentVariable(DistributionManifest.RootOverrideVariable);
-        var folder = Path.Combine(Path.GetTempPath(), "gd-dist-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-dist-");
         try
         {
             Directory.CreateDirectory(folder);

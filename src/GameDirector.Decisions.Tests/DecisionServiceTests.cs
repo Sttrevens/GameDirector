@@ -61,7 +61,7 @@ public class DecisionServiceTests
         Assert.Equal(1, provider.Calls);
         // Audit fields: manifest + evidence hashes, candidates, model, versions.
         Assert.Equal(rig.ManifestHash, record.ManifestHash);
-        Assert.Equal(FilmCompiler.Hash(TestRig.Catalog(rig.ManifestHash)), record.EvidenceHash);
+        Assert.Equal(ContentIdentity.Of(TestRig.Catalog(rig.ManifestHash)), record.EvidenceHash);
         Assert.Contains(TestRig.CheerCandidateId, record.CandidateIds);
         Assert.Equal("typesafe/jev-1.13", record.Model);
         Assert.Equal(ServiceRig.Settings.Endpoint, record.ProviderEndpoint);
@@ -110,10 +110,10 @@ public class DecisionServiceTests
         // The endpoint identifies the answering deployment: changing it (or the
         // policy) with a reused requestId conflicts instead of silently mixing.
         rig.Decisions.ConfigureProvider(ServiceRig.SettingsOtherEndpoint);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => rig.Decisions.CameraChoice("proj", request, CancellationToken.None));
+        await Assert.ThrowsAsync<RequestConflictFault>(() => rig.Decisions.CameraChoice("proj", request, CancellationToken.None));
         rig.Decisions.ConfigureProvider(ServiceRig.SettingsRotatedKey);
         rig.Calibrate(p => p.CameraChoice.Enabled = false);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => rig.Decisions.CameraChoice("proj", request, CancellationToken.None));
+        await Assert.ThrowsAsync<RequestConflictFault>(() => rig.Decisions.CameraChoice("proj", request, CancellationToken.None));
         Assert.Equal(1, provider.Calls);
     }
 
@@ -201,7 +201,7 @@ public class DecisionServiceTests
         Assert.Equal(DslJson.Serialize(film.Scenes[0].Performance), DslJson.Serialize(proposal.Scenes[0].Performance));
         // The proposal was not committed over any accepted document.
         Assert.Equal(0, rig.Studio.Documents.Read("proj", "default").Revision);
-        Assert.Equal(FilmCompiler.Hash(film), record.FilmHash);
+        Assert.Equal(ContentIdentity.Of(film), record.FilmHash);
         Assert.Equal(2, record.CandidateIds.Length);
     }
 
@@ -279,7 +279,7 @@ public class DecisionServiceTests
         Assert.Equal(first.InputHash, second.InputHash);
         Assert.Equal(first.Outcome, second.Outcome);
         var changed = request with { Intent = "closer" };
-        await Assert.ThrowsAsync<InvalidOperationException>(() => rig.Decisions.CameraChoice("proj", changed, CancellationToken.None));
+        await Assert.ThrowsAsync<RequestConflictFault>(() => rig.Decisions.CameraChoice("proj", changed, CancellationToken.None));
     }
 
     [Fact]
@@ -333,20 +333,64 @@ public class DecisionServiceTests
     public async Task CancellationRecordsUncertaintyAndReplayDoesNotCallAgain()
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var provider = new TestRig.FakeProvider(async (_, ct) => { entered.TrySetResult(); await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); });
+        var provider = new TestRig.FakeProvider(async (_, ct) => { entered.TrySetResult(); await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); }); // timing-under-test: the ask must never answer, so only cancellation can end it
         await using var rig = await ServiceRig.Start(provider);
         rig.Decisions.ConfigureProvider(ServiceRig.Settings);
         var candidates = new List<CameraCandidateInput> { new("cand-wide", new ShotSpec { Type = "lockoff", Subject = "hero", Frame = "wide", From = "cam_north" }) };
         using var cts = new CancellationTokenSource();
         var request = new CameraChoiceRequest("req-13", "shot-01", "wider", null, null, TestRig.ValidFilm(), candidates);
         var pending = rig.Decisions.CameraChoice("proj", request, cts.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TestBudget.Hang);
         cts.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
         Assert.True(rig.RecordExists(DecisionTasks.CameraChoice, "req-13"));
         var replay = await rig.Decisions.CameraChoice("proj", request, CancellationToken.None);
         Assert.Equal(DecisionOutcomes.NeedsReview, replay.Outcome);
         Assert.Contains("cancelled", replay.Reason);
+        Assert.Equal(1, provider.Calls);
+    }
+
+    [Theory]
+    [InlineData(DecisionTasks.PerformanceMatch)]
+    [InlineData(DecisionTasks.CameraChoice)]
+    [InlineData(DecisionTasks.AudioMatch)]
+    [InlineData(DecisionTasks.FilmRanking)]
+    [InlineData(DecisionTasks.SemanticReview)]
+    public async Task ClientDisconnectDoesNotCancelAPaidAsk(string task)
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var provider = new TestRig.FakeProvider(async (request, ct) =>
+        {
+            entered.TrySetResult(); await release.Task.WaitAsync(ct); ct.ThrowIfCancellationRequested();
+            return request.Questions.Select(q => new DecisionAnswer(q.Id, q.Kind,
+                q.Kind == DecisionQuestionKind.Choice ? q.Candidates.First(c => c.Id != DecisionPolicyBounds.NoneCandidateId).Id : null,
+                0.9, q.Kind == DecisionQuestionKind.Noul ? 0.8 : null, q.Kind == DecisionQuestionKind.Score ? 1 : null, new Dictionary<string, double>())).ToArray();
+        });
+        using var stopping = new CancellationTokenSource();
+        await using var rig = await ServiceRig.Start(provider, stopping.Token);
+        rig.Decisions.ConfigureProvider(ServiceRig.Settings);
+        rig.Calibrate(p => p.For(task).MinConfidence = 0.5);
+        rig.WriteCatalog(TestRig.Catalog(rig.ManifestHash));
+        rig.WriteMedia("wind.wav", "cold mountain wind");
+        var film = FilmCompiler.Starter(rig.Manifest);
+        const string requestId = "paid-disconnect";
+        Task<DecisionRecord> Ask(CancellationToken ct) => task switch
+        {
+            DecisionTasks.PerformanceMatch => rig.Decisions.PerformanceMatch("proj", new(requestId, "relief"), ct),
+            DecisionTasks.CameraChoice => rig.Decisions.CameraChoice("proj", new(requestId, "shot-01", "wider", null, null, film, null), ct),
+            DecisionTasks.AudioMatch => rig.Decisions.AudioMatch("proj", new(requestId, "cold wind", "sfx"), ct),
+            DecisionTasks.FilmRanking => rig.Decisions.FilmRanking("proj", new(requestId, "portrait", new() { new("first", null, film) }), ct),
+            _ => rig.Decisions.SemanticReview("proj", new(requestId, "The hero shows relief.", null, new() { new("relief", "noul", "Is relief mentioned?", null) }), ct),
+        };
+        using var requestCts = new CancellationTokenSource();
+        var pending = Ask(requestCts.Token);
+        await entered.Task.WaitAsync(TestBudget.Hang);
+        requestCts.Cancel(); release.TrySetResult();
+        var record = await pending;
+        Assert.Equal(task == DecisionTasks.SemanticReview ? DecisionOutcomes.Completed : DecisionOutcomes.Selected, record.Outcome);
+        Assert.Equal(DslJson.Serialize(record), DslJson.Serialize(await Ask(CancellationToken.None)));
+        Assert.True(rig.RecordExists(task, requestId));
         Assert.Equal(1, provider.Calls);
     }
 

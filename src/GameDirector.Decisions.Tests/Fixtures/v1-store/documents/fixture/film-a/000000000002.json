@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "projectId": "fixture",
+  "id": "film-a",
+  "revision": 2,
+  "parentRevision": 1,
+  "requestId": "fixture-save-2",
+  "contentHash": "3ac22b79cd1033e55e32b9c306f33eedbb703bdf0ad86192467fcb5e44f760db",
+  "updatedAt": "2026-10-05T16:08:57.130544+00:00",
+  "film": {
+    "version": 1,
+    "title": "\u7B2C\u4E8C\u7248",
+    "frameRate": 24,
+    "width": 1280,
+    "height": 720,
+    "scenes": [
+      {
+        "id": "s1",
+        "performance": [
+          {
+            "t": 0,
+            "type": "actor.anim",
+            "role": "hero",
+            "clip": "idle",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 0.5,
+            "type": "actor.anim",
+            "role": "hero",
+            "clip": "wave",
+            "fade": 0,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 1,
+            "type": "actor.move",
+            "role": "hero",
+            "fade": 0.2,
+            "to": "gate",
+            "speed": 2.5,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 1.25,
+            "type": "world.timescale",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 0.5,
+            "duration": 1,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 2,
+            "type": "marker",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "label": "beat \u2014 \u9AD8\u6F6E",
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 3,
+            "type": "actor.face",
+            "role": "hero",
+            "fade": 0.2,
+            "speed": 3,
+            "headingTo": "gate",
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          }
+        ],
+        "shots": [
+          {
+            "id": "wide",
+            "start": 0,
+            "end": 2.5,
+            "purpose": "\u5EFA\u7ACB\u7A7A\u95F4",
+            "camera": {
+              "type": "static",
+              "subject": "hero",
+              "frame": "wide",
+              "from": "current",
+              "durationSeconds": 0,
+              "ease": "inOut",
+              "params": {
+                "pan": 10.5,
+                "tilt": -3
+              }
+            }
+          },
+          {
+            "id": "close",
+            "start": 2.5,
+            "end": 4,
+            "purpose": "\u60C5\u7EEA",
+            "camera": {
+              "type": "dolly",
+              "subject": "hero",
+              "frame": "close",
+              "from": "current",
+              "to": "gate",
+              "durationSeconds": 0,
+              "ease": "out"
+            }
+          }
+        ]
+      }
+    ],
+    "audio": [
+      {
+        "id": "a1",
+        "mediaId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "bus": "music",
+        "at": 0,
+        "sourceStart": 0,
+        "duration": 4,
+        "volume": 0.8,
+        "fadeIn": 0,
+        "fadeOut": 0.5
+      }
+    ],
+    "subtitles": [
+      {
+        "start": 0.5,
+        "end": 2,
+        "text": "\u4F60\u597D\uFF0C\u4E16\u754C\n\u7B2C\u4E8C\u884C"
+      }
+    ]
+  }
+}

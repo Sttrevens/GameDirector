@@ -1,5 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
+using GameDirector.Core.Capture;
 using GameDirector.Core.Compilation;
 using GameDirector.Core.Dsl;
 
@@ -50,15 +49,27 @@ public sealed class FilmShot
     public string Purpose { get; set; } = "";
     public ShotSpec Camera { get; set; } = new();
 }
-public sealed record PreparedShot(string Id, string Purpose, double Start, double End, TimelineAsset Timeline, string CacheKey);
+public sealed record PreparedShot(string Id, string Purpose, double Start, double End, TimelineAsset Timeline, string CacheKey)
+{
+    public int CaptureFromFrame { get; init; }
+}
 public sealed record PreparedFilm(FilmPlan Plan, string ManifestHash, List<PreparedShot> Shots);
 
 public static class FilmCompiler
 {
-    public static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(DslJson.Serialize(value)))).ToLowerInvariant();
+    /// <summary>Take-cache generation. The generation is the cache NAMESPACE
+    /// (cache/format.N/<project>/<key>), never part of the hashed key: what a
+    /// format change makes unreachable must be identifiable as dead by its
+    /// location, so prune can reclaim whole old generations. Bump deliberately
+    /// when pipeline or identity changes should invalidate cached takes.</summary>
+    public const int CacheFormat = 4;
 
-    public static PreparedFilm Prepare(FilmPlan input, CapabilityManifest manifest)
+    public static PreparedFilm Prepare(FilmPlan input, CapabilityManifest manifest, MediaProfile? profile = null)
     {
+        DirectorOperations.RequireValidManifest(manifest);
+        // Encoded pixels depend on the encoding profile as much as on the
+        // timeline: the profile is cache identity, never restated per call site.
+        profile ??= MediaProfile.Default;
         var plan = DslJson.Deserialize<FilmPlan>(DslJson.Serialize(input));
         if (plan.Version != 1 || string.IsNullOrWhiteSpace(plan.Title) || plan.Scenes == null || plan.Scenes.Count is < 1 or > FilmLimits.MaxScenes)
             throw new ArgumentException("Film requires a title, version 1 and 1–" + FilmLimits.MaxScenes + " scenes.");
@@ -68,60 +79,71 @@ public static class FilmCompiler
         if (manifest.Capabilities == null || !manifest.Capabilities.TryGetValue(CapabilityKeys.DirectorMode, out var mode) || mode != DirectorModes.OfflineSandbox ||
             !manifest.Capabilities.TryGetValue(CapabilityKeys.PresentationSourceFingerprint, out var fingerprint) || string.IsNullOrWhiteSpace(fingerprint))
             throw new ArgumentException("Connect an offline presentation adapter with a source fingerprint before producing a film.");
-        var hash = Hash(manifest);
+        // Full manifest identity, fingerprint included: pixels depend on the live source.
+        var hash = ContentIdentity.Of(manifest);
         var shots = new List<PreparedShot>();
         var ids = new HashSet<string>();
         var sceneIds = new HashSet<string>();
-        foreach (var scene in plan.Scenes)
+        foreach (var (scene, i) in plan.Scenes.Select((s, i) => (s, i)))
         {
             if (scene == null || !ValidId(scene.Id) || !sceneIds.Add(scene.Id) || scene.Shots == null || scene.Shots.Count == 0 || scene.Performance == null || scene.Performance.Count > FilmLimits.MaxPerformanceCues)
                 throw new ArgumentException("Scenes need unique stable IDs, a performance and at least one shot.");
-            if (scene.Performance.Any(c => c == null || c.Type == CueTypes.CameraShot || c.Type == CueTypes.AudioPlay || c.Type == CueTypes.AudioStop))
-                throw new ArgumentException("Scene performance contains only actor, marker and world cues. Cameras belong to shots; picture capture does not record live audio.");
-            foreach (var shot in scene.Shots)
+            for (var j = 0; j < scene.Performance.Count; j++)
+            {
+                var performanceCue = scene.Performance[j];
+                if (performanceCue == null || performanceCue.Type == CueTypes.CameraShot || performanceCue.Type == CueTypes.AudioPlay || performanceCue.Type == CueTypes.AudioStop)
+                    throw new ArgumentException("scenes[" + i + "].performance[" + j + "]: scene performance contains only actor, marker and world cues. Cameras belong to shots; picture capture does not record live audio.");
+            }
+            foreach (var (shot, k) in scene.Shots.Select((s, k) => (s, k)))
             {
                 if (shot == null || !ValidId(shot.Id) || !ids.Add(shot.Id) || string.IsNullOrWhiteSpace(shot.Purpose) || shot.Camera == null ||
                     !double.IsFinite(shot.Start) || !double.IsFinite(shot.End) || shot.Start < 0 || shot.End <= shot.Start || shot.End > FilmLimits.MaxOutputSeconds ||
-                    !Aligned(shot.Start, plan.FrameRate) || !Aligned(shot.End, plan.FrameRate))
+                    !FrameClock.IsAligned(shot.Start, plan.FrameRate) || !FrameClock.IsAligned(shot.End, plan.FrameRate))
                     throw new ArgumentException("Shots need globally unique stable IDs, an editorial purpose, a camera, and frame-aligned start/end within " + (int)FilmLimits.MaxOutputSeconds + " seconds.");
+                shot.Start=FrameClock.Snap(shot.Start,plan.FrameRate);shot.End=FrameClock.Snap(shot.End,plan.FrameRate);
+                if(shot.End<=shot.Start)throw new ArgumentException("Shots must contain at least one frame.");
                 var timeline = new TimelineAsset { Id = scene.Id + "/" + shot.Id, Title = shot.Purpose };
-                timeline.Cues.AddRange(scene.Performance.Where(c => c.T < shot.End).Select(Clone));
+                // The synthetic per-shot timeline's cue indices mean nothing to the
+                // author, so each is mapped back to its FilmPlan source path and
+                // diagnostics are rewritten before being raised.
+                var sourceMap = new Dictionary<int, string>();
+                for (var p = 0; p < scene.Performance.Count; p++)
+                {
+                    var cue = scene.Performance[p];
+                    if (cue.T >= shot.End) continue;
+                    sourceMap[timeline.Cues.Count] = "scenes[" + i + "].performance[" + p + "]";
+                    timeline.Cues.Add(Clone(cue));
+                }
                 var camera = DslJson.Deserialize<ShotSpec>(DslJson.Serialize(shot.Camera));
                 camera.DurationSeconds = shot.End - shot.Start;
-                // Pre-roll preserves performance continuity but is excluded from the edit.
-                // Use an explicit static camera until the authored shot begins.
-                if (shot.Start > 0)
-                {
-                    var pre = DslJson.Deserialize<ShotSpec>(DslJson.Serialize(camera));
-                    var initialRoles = manifest.Roles.Where(r => r.PresentAtStart).Select(r => r.Id).ToHashSet();
-                    foreach (var cue in scene.Performance.Where(c => c.T == 0))
-                    {
-                        if (cue.Type == CueTypes.ActorSpawn) initialRoles.Add(cue.Role);
-                        if (cue.Type == CueTypes.ActorDespawn) initialRoles.Remove(cue.Role);
-                    }
-                    if (!initialRoles.Contains(pre.Subject)) pre.Subject = manifest.Roles.FirstOrDefault(r => initialRoles.Contains(r.Id))?.Id
-                        ?? throw new ArgumentException(shot.Id + ": pre-roll needs a role bound or spawned at t=0; this engine cannot capture an empty stage prefix.");
-                    if (pre.LookAt != null && manifest.FindRole(pre.LookAt) != null && !initialRoles.Contains(pre.LookAt)) pre.LookAt = null;
-                    pre.Type = ShotVocabulary.DefaultShotId; pre.DurationSeconds = shot.Start;
-                    timeline.Cues.Add(new Cue { T = 0, Type = CueTypes.CameraShot, Shot = pre });
-                }
+                // Replay the whole performance, but no pre-roll pixels need a camera.
+                var captureFromFrame = FrameClock.FrameIndex(shot.Start, plan.FrameRate);
+                sourceMap[timeline.Cues.Count] = "scenes[" + i + "].shots[" + k + "].camera";
                 timeline.Cues.Add(new Cue { T = shot.Start, Type = CueTypes.CameraShot, Shot = camera });
+                sourceMap[timeline.Cues.Count] = "scenes[" + i + "].shots[" + k + "] (generated shot-end marker)";
                 timeline.Cues.Add(new Cue { T = shot.End, Type = CueTypes.Marker, Label = "shot-end" });
                 // A temporary time-scale restoration after the cut must not extend this take.
                 foreach (var cue in timeline.Cues.Where(c => c.Type == CueTypes.WorldTimeScale && c.Duration > 0))
                     cue.Duration = Math.Min(cue.Duration, shot.End - cue.T);
-                var compiled = TimelineCompiler.Compile(timeline, manifest);
-                if (compiled.HasErrors || compiled.Diagnostics.Any(d => d.Code == TimelineCompiler.WRoleNotPresent))
-                    throw new ArgumentException(shot.Id + ": " + string.Join("; ", compiled.Diagnostics));
+                // Every prepared shot is a take: it must pass the same Core
+                // admission gate the engine runs, so validate/readiness fail early.
+                var admission = TakeAdmission.Admit(timeline, manifest, plan.FrameRate, plan.Width, plan.Height, captureFromFrame);
+                if (!admission.Ok)
+                    throw new ArgumentException(string.Join("; ", admission.GateErrors.Concat(
+                        admission.Compiled.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                            .Select(d => FilmCoordinates(d, sourceMap).ToString()))));
                 // Identity/purpose do not affect pixels; editorial changes must not re-render.
                 var pixelTimeline = DslJson.Deserialize<TimelineAsset>(DslJson.Serialize(timeline));
                 pixelTimeline.Id = "picture"; pixelTimeline.Title = "picture";
-                var key = Hash(new { timeline = pixelTimeline, manifest = hash, plan.FrameRate, plan.Width, plan.Height });
-                shots.Add(new PreparedShot(shot.Id, shot.Purpose, shot.Start, shot.End, timeline, key));
+                // The format generation is the namespace (cache/format.N/...),
+                // not the key: only identity inputs are hashed.
+                var key = ContentIdentity.Of(new { timeline = pixelTimeline, manifest = hash, captureFromFrame, plan.FrameRate, plan.Width, plan.Height,
+                    codec = profile.VideoCodec, preset = profile.Preset, crf = profile.Crf, pixelFormat = profile.PixelFormat });
+                shots.Add(new PreparedShot(shot.Id, shot.Purpose, shot.Start, shot.End, timeline, key) { CaptureFromFrame = captureFromFrame });
             }
         }
         if (shots.Count > FilmLimits.MaxShots || shots.Sum(s => s.End - s.Start) > FilmLimits.MaxOutputSeconds || shots.Sum(s => s.End) > FilmLimits.MaxCaptureSeconds)
-            throw new ArgumentException("Film exceeds " + FilmLimits.MaxShots + " shots, " + (int)(FilmLimits.MaxOutputSeconds / 60) + " minutes of output or " + (int)(FilmLimits.MaxCaptureSeconds / 60) + " minutes of pre-roll capture.");
+            throw new ArgumentException("Film exceeds " + FilmLimits.MaxShots + " shots, " + (int)(FilmLimits.MaxOutputSeconds / 60) + " minutes of output or " + (int)(FilmLimits.MaxCaptureSeconds / 60) + " minutes of replay (including pre-roll).");
         ValidateSound(plan, shots.Sum(s => s.End - s.Start));
         return new PreparedFilm(plan, hash, shots);
     }
@@ -134,22 +156,43 @@ public static class FilmCompiler
             if (a == null || !ValidId(a.Id) || !ids.Add(a.Id) || !System.Text.RegularExpressions.Regex.IsMatch(a.MediaId ?? "", "^[a-f0-9]{64}$") ||
                 !(a.Bus is "dialogue" or "music" or "sfx") || !double.IsFinite(a.At) || !double.IsFinite(a.SourceStart) || !double.IsFinite(a.Duration) ||
                 !double.IsFinite(a.Volume) || !double.IsFinite(a.FadeIn) || !double.IsFinite(a.FadeOut) || a.At < 0 || a.SourceStart < 0 ||
-                a.Duration <= 0 || a.At + a.Duration > duration + .00001 || a.Volume < 0 || a.Volume > FilmLimits.MaxVolume || a.FadeIn < 0 || a.FadeOut < 0 || a.FadeIn + a.FadeOut > a.Duration)
+                a.Duration <= 0 || a.At + a.Duration > duration + FrameClock.AlignmentToleranceFrames / plan.FrameRate || a.Volume < 0 || a.Volume > FilmLimits.MaxVolume || a.FadeIn < 0 || a.FadeOut < 0 || a.FadeIn + a.FadeOut > a.Duration)
                 throw new ArgumentException("Audio cues need unique IDs, imported media IDs, valid bus, gain, fades and timing within the final film.");
         double previousEnd = 0;
         foreach (var caption in plan.Subtitles)
         {
             if (caption == null || !double.IsFinite(caption.Start) || !double.IsFinite(caption.End) || caption.Start < previousEnd || caption.End <= caption.Start ||
-                caption.End > duration + .00001 || string.IsNullOrWhiteSpace(caption.Text) || caption.Text.Length > FilmLimits.MaxSubtitleLength || caption.Text.Contains('\0'))
+                caption.End > duration + FrameClock.AlignmentToleranceFrames / plan.FrameRate || string.IsNullOrWhiteSpace(caption.Text) || caption.Text.Length > FilmLimits.MaxSubtitleLength || caption.Text.Contains('\0'))
                 throw new ArgumentException("Captions must be ordered, non-overlapping, nonempty and within the final film.");
             previousEnd = caption.End;
         }
     }
     private static Cue Clone(Cue cue) => DslJson.Deserialize<Cue>(DslJson.Serialize(cue));
-    public static FilmPlan Read(string path) => System.Text.Json.JsonSerializer.Deserialize<FilmPlan>(File.ReadAllText(path),
-        new System.Text.Json.JsonSerializerOptions(DslJson.Options) { UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow })
-        ?? throw new ArgumentException("Empty film script.");
-    private static bool Aligned(double t, int fps) => Math.Abs(t * fps - Math.Round(t * fps)) < .00001;
+
+    /// <summary>Rewrite a synthetic-timeline diagnostic into the FilmPlan
+    /// coordinates the author wrote: a performance cue maps to
+    /// scenes[i].performance[j]; the shot's camera cue to scenes[i].shots[k].camera
+    /// (the synthetic ".shot" hop collapses: cues[7].shot.to becomes
+    /// scenes[0].shots[1].camera.to); generated cues carry a label instead of a
+    /// field that does not exist in the authored document.</summary>
+    private static Diagnostic FilmCoordinates(Diagnostic d, IReadOnlyDictionary<int, string> sourceMap)
+    {
+        if (d.CueIndex < 0 || !sourceMap.TryGetValue(d.CueIndex, out var source)) return d;
+        var suffix = "";
+        if (!string.IsNullOrEmpty(d.Path) && d.Path.StartsWith("cues[", StringComparison.Ordinal))
+        {
+            var close = d.Path.IndexOf(']');
+            if (close >= 0) suffix = d.Path.Substring(close + 1);
+        }
+        if ((source.EndsWith(".camera", StringComparison.Ordinal) || source.Contains("(generated")) &&
+            suffix.StartsWith(".shot", StringComparison.Ordinal))
+            suffix = suffix.Length == ".shot".Length ? "" : suffix.Substring(".shot".Length);
+        return new Diagnostic { Severity = d.Severity, Code = d.Code, Message = d.Message, CueIndex = d.CueIndex, Path = source + suffix };
+    }
+
+    /// <summary>Read an authored film script strictly: unknown fields and a missing
+    /// version fail with the JSON path, never with a silently applied default.</summary>
+    public static FilmPlan Read(string path) => DslJson.LoadAuthored<FilmPlan>(path);
     public static bool ValidId(string? id) => id != null && System.Text.RegularExpressions.Regex.IsMatch(id, "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$");
 
     public static FilmPlan Starter(CapabilityManifest manifest)

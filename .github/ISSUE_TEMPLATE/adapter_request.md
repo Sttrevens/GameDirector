@@ -13,7 +13,7 @@ labels: adapter
 
 <!-- Rough capability sketch: controllable cameras? actors with animation
      clips? locations/teleport points? audio triggers? See
-     adapters/cdrebirth/manifests/cdrebirth.manifest.json for the shape. -->
+     adapters/stardeck/manifest.json for the shape. -->
 
 **What exists so far**
 

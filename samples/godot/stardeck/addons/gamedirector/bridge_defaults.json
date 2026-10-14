@@ -1,0 +1,7 @@
+{
+  "port": 39779,
+  "loopbackHost": "127.0.0.1",
+  "ownerRoute": "gamedirector/dock-owner",
+  "ownerEnvironment": "GAMEDIRECTOR_DOCK_OWNER",
+  "logOption": "--dock-log"
+}

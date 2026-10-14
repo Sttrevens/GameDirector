@@ -13,7 +13,7 @@ public static class OutputPolicy
             current = Path.Combine(current, part);
             FileSystemInfo entry = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
             if (entry.LinkTarget != null)
-                current = entry.ResolveLinkTarget(true)?.FullName ?? throw new IOException("Unresolved storage link: " + current);
+                current = entry.ResolveLinkTarget(true)?.FullName ?? throw new StoreIntegrityException("Unresolved storage link: " + current);
         }
         return Path.TrimEndingDirectorySeparator(current);
     }
@@ -27,33 +27,42 @@ public static class OutputPolicy
         var parent = Physical(root);
         // Parent owners validate once on admission; children resolve links on every use.
         var result = Physical(Path.Combine(new[] { parent }.Concat(parts).ToArray()));
-        if (!Contains(parent, result)) throw new IOException("Output child escaped its owned directory.");
+        if (!Contains(parent, result)) throw new StoreIntegrityException("Output child escaped its owned directory.");
         return result;
     }
     public static string ManifestRoot(GameDirector.Core.Dsl.CapabilityManifest manifest)
     {
         if (manifest.Capabilities == null || !manifest.Capabilities.TryGetValue(GameDirector.Core.Dsl.CapabilityKeys.ProjectSourceRoot, out var root) || !Path.IsPathFullyQualified(root) || !Directory.Exists(root))
-            throw new IOException("Adapter must declare an existing " + GameDirector.Core.Dsl.CapabilityKeys.ProjectSourceRoot + " before writing capture output.");
+            throw new EngineUnavailableException("Adapter must declare an existing " + GameDirector.Core.Dsl.CapabilityKeys.ProjectSourceRoot + " before writing capture output.");
         return Physical(root);
     }
     public static string RequireOutput(string output, string? sourceRoot = null)
+        => RequireOutput(output, sourceRoot, Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+    // Tests inject the profile directory so the boundary never touches the real home.
+    internal static string RequireOutput(string output, string? sourceRoot, string? profileDirectory)
     {
         var path = Physical(output);
         if (!string.IsNullOrWhiteSpace(sourceRoot) && Contains(Physical(sourceRoot), path))
-            throw new IOException("Production output must be outside the game source project. Choose a Workbench storage folder.");
-        for (var dir = Directory.Exists(path) ? new DirectoryInfo(path) : Directory.GetParent(path); dir != null; dir = dir.Parent)
+            throw new ArgumentException("Production output must be outside the game source project. Choose a Workbench storage folder.");
+        var profile = string.IsNullOrWhiteSpace(profileDirectory) ? null : Physical(profileDirectory);
+        for (var dir = Directory.Exists(path) ? new DirectoryInfo(path) : Directory.GetParent(path); dir != null && IsProjectBoundaryCandidate(dir, profile); dir = dir.Parent)
         {
             if (Directory.Exists(Path.Combine(dir.FullName, ".git")) || File.Exists(Path.Combine(dir.FullName, ".git")))
             {
                 var start = new System.Diagnostics.ProcessStartInfo("git") { WorkingDirectory = dir.FullName, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
                 foreach (var arg in new[] { "check-ignore", "--quiet", "--", path }) start.ArgumentList.Add(arg);
-                try { using var process = System.Diagnostics.Process.Start(start)!; if (!process.WaitForExit(5000)) { process.Kill(); throw new IOException("Could not verify ignored output directory."); } if (process.ExitCode != 0) throw new IOException("Output inside a repository must be in an explicitly ignored directory. Choose external Workbench storage."); }
-                catch (System.ComponentModel.Win32Exception) { throw new IOException("Cannot verify repository output without Git; choose an external folder."); }
+                try { using var process = System.Diagnostics.Process.Start(start)!; if (!process.WaitForExit(5000)) { process.Kill(); throw new StateConflictException("Could not verify ignored output directory.", retryable:true); } if (process.ExitCode != 0) throw new ArgumentException("Output inside a repository must be in an explicitly ignored directory. Choose external Workbench storage."); }
+                catch (System.ComponentModel.Win32Exception) { throw new StateConflictException("Cannot verify repository output without Git; choose an external folder."); }
             }
             if (File.Exists(Path.Combine(dir.FullName, "package.json")) || Directory.Exists(Path.Combine(dir.FullName, "ProjectSettings")) && Directory.Exists(Path.Combine(dir.FullName, "Assets")) ||
                 File.Exists(Path.Combine(dir.FullName, "project.godot")) || Directory.Exists(dir.FullName) && Directory.EnumerateFiles(dir.FullName, "*.uproject", SearchOption.TopDirectoryOnly).Any())
-                throw new IOException("Production output cannot be written inside an engine or Node source project.");
+                throw new ArgumentException("Production output cannot be written inside an engine or Node source project.");
         }
         return path;
     }
+    // A profile directory, like a filesystem root, contains projects but is never itself
+    // a project; neither is any ancestor of it. Contains(dir, profile) matches exactly the
+    // profile and the directories above it, so the ancestor scan stops before evaluating them.
+    private static bool IsProjectBoundaryCandidate(DirectoryInfo dir, string? profile)
+        => dir.Parent != null && (profile == null || !Contains(dir.FullName, profile));
 }

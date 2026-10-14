@@ -17,88 +17,98 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gamedirector_dist as dist
+import stage_godot
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True, help="fresh output directory")
     parser.add_argument("--runtime", required=True, help="target RID from the distribution manifest")
+    parser.add_argument("--release", action="store_true", help="stamp a release build; requires a clean worktree")
     args = parser.parse_args()
 
     root = dist.REPO
     config = dist.load_config(root)
+    state = dist.git_state(root)
+    status = dist.release_status(state, args.release)
     rid = args.runtime
     if rid not in config["supportedPlatforms"]:
         raise SystemExit(f"unsupported runtime {rid}; supported: {', '.join(config['supportedPlatforms'])}")
     version = dist.read_version(root)
+    dist.verify_core_dll(root)
     out = Path(args.out).resolve()
-    archive = Path(str(out) + ("." + config["platforms"][rid]["archive"]))
+    archive = out.parent / dist.archive_name(config, version, rid)
     if out.exists() or archive.exists():
         raise SystemExit("Output exists; use a fresh candidate directory")
     out.mkdir(parents=True)
 
-    # Apps: gd, gamedirector-mcp, gamedirector-workbench as sibling native apps.
-    for app_key in ("cli", "mcp", "workbench"):
-        folder = dist.publish_app(root, config, app_key, rid, out / config["apps"][app_key]["folder"])
-        dist.write_runtime_manifest(folder, config, app_key, rid, version, version)
-        dist.apply_unix_modes(config, rid, folder)
+    # Three native entrypoints share one self-contained runtime and hash manifest.
+    dist.publish_runtime(root, config, rid, out / config["runtimeFolder"], version)
 
-    # The Unity package ready for `gd unity install` (same staging as the UPM tgz).
-    dist.stage_unity_package(root, config, rid, out / config["unity"]["distributionFolder"], version)
+    # No second runtime: gd unity install materializes Tools~/bin from archive bin/.
+    dist.stage_unity_package(root, config, rid, out / config["unity"]["distributionFolder"], version,
+                             include_runtime=False)
 
     # Media installer data + the declarative manifest the runtime reads.
     dist.media_manifest_copy(root, config, out)
     dist.write_distribution_manifest_copy(root, out)
 
-    shutil.copytree(root / "docs", out / "docs")
+    shutil.copytree(root / "docs", out / "docs", ignore=shutil.ignore_patterns("history", ".DS_Store"))
     shutil.copy2(root / "README.md", out / "README.md")
+    dist.copy_release_documents(root, out)
     shutil.copytree(root / "samples", out / "samples",
-                    ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
+                    ignore=stage_godot.IGNORE)
     shutil.copytree(root / "skills", out / "skills")
-    # Retain the existing second-engine integration and optional game adapter.
+    # Retain the optional Three engine integration and public sample adapters.
     shutil.copytree(root / "packages/gamedirector-three", out / "three",
                     ignore=shutil.ignore_patterns("node_modules", ".DS_Store"))
+    stage_godot.stage(root, out)
+    addon_name = config["godotArchiveName"].format(version=version)
+    standalone_addon = out.parent / addon_name
+    if not standalone_addon.exists():
+        stage_godot.addon_archive(root, standalone_addon)
     shutil.copytree(root / "adapters/sandring", out / "adapters/sandring")
-    shutil.copytree(root / "adapters/cdrebirth/com.gamedirector.cdrebirth", out / "unity/com.gamedirector.cdrebirth")
-    (out / "adapters/cdrebirth").mkdir(parents=True)
-    shutil.copy2(root / "adapters/cdrebirth/performances.json", out / "adapters/cdrebirth/performances.json")
-    shutil.copytree(root / "adapters/cdrebirth/manifests", out / "adapters/cdrebirth/manifests")
 
-    exe = config["apps"]["workbench"]["executable"] + config["platforms"][rid]["executableExtension"]
+    cli = config["apps"]["cli"]["executable"] + config["platforms"][rid]["executableExtension"]
+    cli_path = config["runtimeFolder"] + "/" + cli
     (out / "INSTALL.md").write_text(f"""# GameDirector {version} — {rid}
 
 Self-contained CLI/MCP/Workbench: no .NET, Python or Node required.
+Godot uses the bundled .NET supervisor and a pure-GDScript addon (copy `godot/addons/gamedirector` into your project). Install Godot 4.6 or newer (tested on 4.6.2) separately; no Node/Python or Godot .NET build is required.
 The optional Three engine integration retains its own Node/browser prerequisites.
 
-- `cli/gd{config['platforms'][rid]['executableExtension']} doctor` — environment check
-- `cli/gd{config['platforms'][rid]['executableExtension']} workbench --open true` — browser workbench (or use the Start launcher)
-- `cli/gd{config['platforms'][rid]['executableExtension']} mcp` — MCP stdio server for LLM hosts
-- `cli/gd{config['platforms'][rid]['executableExtension']} unity install --project <Unity project>` — plan a Unity package
-  install from `unity/com.gamedirector.unity` (add `--apply` to write). Repeating an identical
-  install performs zero writes; local edits stop the install before any write.
-- `cli/gd{config['platforms'][rid]['executableExtension']} media status` — media tool situation; `media install --option <id>`
+- `{cli_path} doctor` — environment check
+- `{cli_path} workbench --open` — browser workbench (or use the Start launcher)
+- `{cli_path} mcp` — MCP stdio server for LLM hosts
+- `{cli_path} unity install --project <Unity project>` — plan a Unity package
+  install from `unity/com.gamedirector.unity`, including the archive's shared
+  `{config['runtimeFolder']}/` under `{dist.unity_runtime_folder(config)}` (add `--apply` to write).
+  The installed package is byte-identical to the platform tgz (except the install receipt).
+  Repeating an identical install performs zero writes; local edits stop it before any write.
+- `{cli_path} godot serve --project <Godot project> --stage res://stage.tscn --godot <binary>` — local engine bridge, default port 39779 (`--port` overrides). See docs/godot.md.
+- `{cli_path} media status` — media tool situation; `media install --option <id>`
   installs the complete ffmpeg+ffprobe unit (a package-manager strategy, or an offline
   verified bundle via `--descriptor bundle.json`).
 
-Data stays in your per-user application data folder. See docs/09-product-workbench.md and
-docs/16-distribution-and-install.md.
+Data stays in your per-user application data folder. See docs/workbench.md and
+docs/install.md.
 """, encoding="utf-8")
     command = out / "Start GameDirector.command"
-    command.write_text(f'#!/bin/sh\nset -eu\ncd "$(dirname "$0")"\nexec ./workbench/{config["apps"]["workbench"]["executable"]} --open true\n', encoding="utf-8")
+    command.write_text(f'#!/bin/sh\nset -eu\ncd "$(dirname "$0")"\nexec ./{config["runtimeFolder"]}/{config["apps"]["cli"]["executable"]} workbench --open\n', encoding="utf-8")
     command.chmod(0o755)
     (out / "Start GameDirector.cmd").write_text(
-        "@echo off\r\ncd /d \"%~dp0\"\r\nstart \"\" workbench\\" + exe + " --open true\r\n", encoding="utf-8")
+        "@echo off\r\ncd /d \"%~dp0\"\r\n\"" + cli_path.replace("/", "\\") + "\" workbench --open\r\n", encoding="utf-8")
 
-    state = dist.git_state(root)
     release = dict(product=config["product"], version=version, rid=rid,
                    protocolVersion=config["protocolVersion"], **state,
-                   status="local candidate; not a published release",
+                   status=status,
                    files=dist.hash_tree(out))
     (out / config["releaseManifestFile"]).write_text(json.dumps(release, indent=2) + "\n", encoding="utf-8")
 
+    dist.assert_no_local_paths(out, root)
     dist.make_archive(out, archive, config, rid)
-    print(json.dumps({"distribution": str(out), "archive": str(archive),
-                      "version": version, "rid": rid, "sha256": dist.sha256(archive)}))
+    print(json.dumps({"distribution": str(out), "archive": str(archive), "godotAddon": str(standalone_addon),
+                      "version": version, "rid": rid, "sha256": dist.sha256(archive), "godotAddonSha256": dist.sha256(standalone_addon)}))
 
 
 if __name__ == "__main__":

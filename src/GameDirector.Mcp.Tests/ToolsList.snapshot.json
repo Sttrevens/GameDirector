@@ -1,0 +1,293 @@
+[
+  {
+    "name": "gd_capture_frame",
+    "required": [
+      "outPath"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_director_guide",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_doctor",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_edit",
+    "required": [
+      "editPath",
+      "outputDirectory"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_get_manifest",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_grammar",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_performance_catalog",
+    "required": [
+      "catalogPath",
+      "manifestPath"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_play_timeline",
+    "required": [
+      "timelinePath"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_resume",
+    "required": [
+      "outputDirectory"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_status",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_stop",
+    "required": [],
+    "annotations": {
+      "idempotent": true
+    }
+  },
+  {
+    "name": "gd_studio_catalog_import",
+    "required": [
+      "projectId",
+      "catalogPath"
+    ],
+    "annotations": {
+      "destructive": true
+    }
+  },
+  {
+    "name": "gd_studio_catalog_read",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_catalog_scaffold",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "idempotent": true
+    }
+  },
+  {
+    "name": "gd_studio_catalog_status",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_decision",
+    "required": [
+      "projectId",
+      "task",
+      "requestPath"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_studio_decision_records",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_decision_settings",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_document",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_document_produce",
+    "required": [
+      "projectId",
+      "documentId",
+      "revision",
+      "requestId"
+    ],
+    "annotations": {
+      "idempotent": true
+    }
+  },
+  {
+    "name": "gd_studio_document_readiness",
+    "required": [
+      "projectId",
+      "documentId",
+      "revision"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_job_cancel",
+    "required": [
+      "jobId"
+    ],
+    "annotations": {
+      "destructive": true
+    }
+  },
+  {
+    "name": "gd_studio_job_resume",
+    "required": [
+      "jobId"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_studio_job_status",
+    "required": [
+      "jobId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_media_import",
+    "required": [
+      "projectId",
+      "filePath"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_studio_media_list",
+    "required": [
+      "projectId"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_produce",
+    "required": [
+      "projectId",
+      "filmPath",
+      "requestId"
+    ],
+    "annotations": {
+      "idempotent": true
+    }
+  },
+  {
+    "name": "gd_studio_project",
+    "required": [
+      "id",
+      "name",
+      "engine",
+      "endpoint"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_studio_save_document",
+    "required": [
+      "projectId",
+      "documentId",
+      "expectedRevision",
+      "requestId",
+      "filmPath"
+    ],
+    "annotations": {
+      "idempotent": true
+    }
+  },
+  {
+    "name": "gd_studio_state",
+    "required": [],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_studio_validate",
+    "required": [
+      "projectId",
+      "filmPath"
+    ],
+    "annotations": {
+      "readOnly": true
+    }
+  },
+  {
+    "name": "gd_take",
+    "required": [
+      "timelinePath",
+      "outputDirectory"
+    ],
+    "annotations": {}
+  },
+  {
+    "name": "gd_validate_timeline",
+    "required": [
+      "timelinePath"
+    ],
+    "annotations": {
+      "readOnly": true
+    },
+    "optional": [
+      "manifestPath",
+      "endpoint",
+      "width",
+      "height"
+    ]
+  }
+]

@@ -1,0 +1,256 @@
+{
+ "version": "0.1",
+ "id": "stardeck-meet-v2",
+ "title": "走廊相遇 · 按意见修改",
+ "cues": [
+  {
+   "t": 0,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Idle",
+   "fade": 0
+  },
+  {
+   "t": 0,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Idle",
+   "fade": 0
+  },
+  {
+   "t": 0,
+   "type": "actor.move",
+   "role": "bolt",
+   "to": "bolt_mark",
+   "speed": 1.6,
+   "headingTo": "pip"
+  },
+  {
+   "t": 0.4,
+   "type": "actor.move",
+   "role": "pip",
+   "to": "pip_mark",
+   "speed": 1.6,
+   "headingTo": "bolt"
+  },
+  {
+   "t": 0,
+   "type": "marker",
+   "label": "低机位跟拍小黄"
+  },
+  {
+   "t": 0,
+   "type": "camera.shot",
+   "shot": {
+    "type": "tracking",
+    "subject": "bolt",
+    "frame": "full",
+    "from": "cam_low_side",
+    "durationSeconds": 3.6,
+    "fov": 34,
+    "ease": "linear",
+    "params": {
+     "targetHeight": 1.15
+    }
+   }
+  },
+  {
+   "t": 3.6,
+   "type": "marker",
+   "label": "小红特写：先惊讶"
+  },
+  {
+   "t": 3.6,
+   "type": "camera.shot",
+   "shot": {
+    "type": "dolly",
+    "subject": "pip",
+    "frame": "closeup",
+    "from": "cam_ots_bolt",
+    "to": "cam_ots_bolt",
+    "durationSeconds": 2.0,
+    "fov": 20,
+    "ease": "out",
+    "params": {
+     "targetHeight": 1.3,
+     "toOffsetZ": -0.6
+    }
+   }
+  },
+  {
+   "t": 4.1,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Surprised",
+   "fade": 0.15
+  },
+  {
+   "t": 5.6,
+   "type": "marker",
+   "label": "小黄挥手"
+  },
+  {
+   "t": 5.6,
+   "type": "camera.shot",
+   "shot": {
+    "type": "dolly",
+    "subject": "bolt",
+    "frame": "closeup",
+    "from": "cam_single_bolt",
+    "to": "cam_single_bolt",
+    "durationSeconds": 1.6,
+    "fov": 30,
+    "ease": "out",
+    "params": {
+     "targetHeight": 1.3,
+     "toOffsetX": -0.15,
+     "toOffsetZ": 0.2
+    }
+   }
+  },
+  {
+   "t": 5.65,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Wave",
+   "fade": 0.15
+  },
+  {
+   "t": 7.2,
+   "type": "marker",
+   "label": "再点赞"
+  },
+  {
+   "t": 7.2,
+   "type": "camera.shot",
+   "shot": {
+    "type": "orbit",
+    "subject": "pip",
+    "frame": "closeup",
+    "from": "cam_single_pip",
+    "durationSeconds": 1.6,
+    "fov": 30,
+    "ease": "inOut",
+    "params": {
+     "targetHeight": 1.3,
+     "orbitDeg": -20
+    }
+   }
+  },
+  {
+   "t": 7.25,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "ThumbsUp",
+   "fade": 0.15
+  },
+  {
+   "t": 8.8,
+   "type": "marker",
+   "label": "跳舞：镜头环绕"
+  },
+  {
+   "t": 8.8,
+   "type": "actor.move",
+   "role": "bolt",
+   "to": "bolt_dance",
+   "speed": 1.2,
+   "headingTo": "pip"
+  },
+  {
+   "t": 8.8,
+   "type": "actor.move",
+   "role": "pip",
+   "to": "pip_dance",
+   "speed": 1.2,
+   "headingTo": "bolt"
+  },
+  {
+   "t": 8.8,
+   "type": "camera.shot",
+   "shot": {
+    "type": "orbit",
+    "subject": "bolt",
+    "with": [
+     "pip"
+    ],
+    "frame": "medium",
+    "from": "cam_side_right",
+    "durationSeconds": 5.2,
+    "fov": 44,
+    "ease": "inOut",
+    "params": {
+     "targetHeight": 0.95,
+     "orbitDeg": 200
+    }
+   }
+  },
+  {
+   "t": 9.3,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Dance",
+   "fade": 0.25
+  },
+  {
+   "t": 9.3,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Dance",
+   "fade": 0.25
+  },
+  {
+   "t": 14,
+   "type": "marker",
+   "label": "转向镜头挥手，拉高收尾"
+  },
+  {
+   "t": 14,
+   "type": "actor.face",
+   "role": "bolt",
+   "headingTo": "cam_high"
+  },
+  {
+   "t": 14,
+   "type": "actor.face",
+   "role": "pip",
+   "headingTo": "cam_high"
+  },
+  {
+   "t": 14,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Wave",
+   "fade": 0.2
+  },
+  {
+   "t": 14.15,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Wave",
+   "fade": 0.2
+  },
+  {
+   "t": 14,
+   "type": "camera.shot",
+   "shot": {
+    "type": "crane",
+    "subject": "bolt",
+    "with": [
+     "pip"
+    ],
+    "frame": "wide",
+    "from": "current",
+    "to": "cam_high",
+    "durationSeconds": 2,
+    "fov": 44,
+    "ease": "inOut",
+    "params": {
+     "distance": 3.3,
+     "targetHeight": 0.9,
+     "endFov": 52
+    }
+   }
+  }
+ ]
+}

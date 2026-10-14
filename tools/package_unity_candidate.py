@@ -1,6 +1,6 @@
 """Build the Unity-first UPM candidate: a self-contained .tgz per platform.
 
-The package carries the complete workbench runtime under Tools~/Workbench
+The package carries gd, MCP and Workbench in one runtime under Tools~/bin
 (self-contained publish for the RID, Fonts included), the media installer data
 under Tools~/media, and a gamedirector.runtime.json the Unity launcher
 validates (platform + protocol) before launching. Staging is shared with the
@@ -17,9 +17,7 @@ import argparse
 import json
 import shutil
 import sys
-import tarfile
 import tempfile
-import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -29,9 +27,14 @@ import gamedirector_dist as dist
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
+    parser.add_argument("--release", action="store_true", help="stamp a release build; requires a clean worktree")
     parser.add_argument("--runtime", default=None,
                         help="target RID from the distribution manifest (default: all supported platforms)")
+    parser.add_argument("--runtime-source", type=Path,
+                        help="reuse a verified bin/ for --runtime (same bytes as full archive)")
     args = parser.parse_args()
+    if args.runtime_source is not None and args.runtime is None:
+        parser.error("--runtime-source requires --runtime")
 
     root = dist.REPO
     config = dist.load_config(root)
@@ -40,76 +43,71 @@ def main() -> None:
         if rid not in config["supportedPlatforms"]:
             raise SystemExit(f"unsupported runtime {rid}; supported: {', '.join(config['supportedPlatforms'])}")
     version = dist.read_version(root)
+    dist.verify_core_dll(root)
     out = Path(args.out).resolve()
-    archive = Path(str(out) + ".zip")
-    if out.exists() or archive.exists():
+    if out.exists():
         raise SystemExit("Candidate already exists; choose a new output.")
     out.mkdir(parents=True)
 
-    package_name = config["unity"]["packageName"]
     packages = []
     for rid in rids:
-        name = f"{package_name}-{version}-{rid}.tgz"
+        name = dist.archive_name(config, version, rid, unity=True)
         target = out / name
         with tempfile.TemporaryDirectory(prefix="gd-unity-package-") as temporary:
-            package = dist.stage_unity_package(root, config, rid, Path(temporary) / "package", version)
+            package = dist.stage_unity_package(root, config, rid, Path(temporary) / "package", version,
+                                                runtime_source=args.runtime_source)
+            dist.assert_no_local_paths(package, root)
             # tgz with exec bits recorded; Unity extracts under PackageCache.
-            with tarfile.open(target, "x:gz") as tar:
-                def reset(ti: tarfile.TarInfo) -> tarfile.TarInfo:
-                    ti.uid = ti.gid = 0
-                    ti.uname = ti.gname = ""
-                    if ti.isfile():
-                        base = ti.name.split("/")[-1]
-                        executable = base in config["platforms"][rid]["unixExecutables"]
-                        ti.mode = 0o755 if executable else 0o644
-                    else:
-                        ti.mode = 0o755
-                    return ti
-                tar.add(package, arcname="package", filter=reset)
+            dist.make_unity_archive(package, target, config, rid)
         packages.append({"file": name, "rid": rid, "sha256": dist.sha256(target)})
 
     rid_lines = "\n".join(f"- {p['rid']}: `{p['file']}`" for p in packages)
-    (out / "INSTALL.md").write_text(f"""# GameDirector Unity 候选包（自包含平台运行时）
+    runtime_folder = dist.unity_runtime_folder(config).as_posix()
+    (out / "INSTALL.md").write_text(f"""# GameDirector Unity platform package (shared, self-contained runtime)
 
-版本：{version}。这是验证中的候选包，尚未签名、公证，也未完成陌生用户和干净机器验收。
-每个 tgz 只支持一个平台；请按当前 Unity 编辑器所在平台选择：
+Version {version}. The macOS runtime is not signed or notarized; see docs/install.md for system security prompts.
+Each tgz supports one platform. Choose the platform running your Unity Editor:
 
 {rid_lines}
 
-1. 在 Unity Package Manager 选择 **Add package from tarball**，选择对应平台的 tgz。
-2. 先保存当前场景，然后选择 **Tools → GameDirector → Create Independent Example**。
-3. 选中 Film 资产，在原生 Inspector 点 **启动 / 连接工作台**。后台程序随包提供，无需安装 .NET SDK。
-   启动器会先校验随包运行组件的平台与协议版本（Tools~/Workbench/gamedirector.runtime.json），
-   不匹配会给出明确错误；跨机打包丢失的 Unix 执行权限会自动修复（PackageCache 内的包会先镜像到
-   用户数据目录再修复，绝不改写 PackageCache）。
-4. 打开示例离线场景并进入 Play Mode，连接作品、导入示例声音，检查拍摄条件。
+1. In Unity Package Manager, choose **Add package from tarball** and select your platform's tgz.
+2. Save your current scene, then choose **Tools → GameDirector → Create Independent Example**.
+3. Select the Film asset and click **Start / connect Workbench** in the Inspector.
+   The backend is included; no .NET SDK is needed. The launcher checks the bundled
+   runtime's platform and protocol ({runtime_folder}/{config['runtimeManifestFile']})
+   before starting it and reports mismatches explicitly. Unix execute bits lost during
+   cross-platform packaging are repaired automatically. Packages in PackageCache are
+   mirrored to your user data folder first; PackageCache is never modified.
+4. Open the example offline stage, enter Play Mode, connect the film, import the example sound and check readiness.
 
-## 编码组件（ffmpeg + ffprobe，完整套件才视为可用）
+## Encoding tools (the complete ffmpeg + ffprobe unit)
 
-此候选不打包 FFmpeg。首次需要编码时，在准备检查或媒体库界面选择安装方式：
-当前平台的包管理器（winget / Homebrew，完整套件含 ffprobe），或离线核验套件——
-在安装界面填写你核验过的 bundle descriptor JSON 的完整路径后点击安装，
-描述文件必须为 ffmpeg 与 ffprobe 同时给出路径与 SHA-256。不完整的组合不会被当作可用。
-也可以把兼容程序的绝对路径通过 `GAMEDIRECTOR_FFMPEG` / `GAMEDIRECTOR_FFPROBE`
-传给启动 Unity 的环境；指向不存在文件的环境变量会明确报错，不会静默回退。
+FFmpeg is not bundled. When you first need to render, choose an installation method
+in the readiness check or media panel: your platform's package manager (winget or
+Homebrew, including ffprobe), or a verified offline bundle. For an offline bundle,
+enter the full path to your trusted bundle descriptor JSON and click Install.
+The descriptor must supply paths and SHA-256 hashes for both ffmpeg and ffprobe.
+Incomplete bundles are never treated as ready. You can also pass absolute paths to
+compatible programs through `GAMEDIRECTOR_FFMPEG` / `GAMEDIRECTOR_FFPROBE` in Unity's
+launch environment. Invalid overrides fail explicitly rather than falling back silently.
 
-中文字幕的 Noto Sans CJK SC 字体随运行组件提供（Tools~/Workbench/Fonts，含许可证与来源）。
-影片与声音库保存在当前用户本机数据目录；拍摄不会自动保存游戏场景或安装插件。
-第一版范围是本机 Unity 离线拍摄与本机浏览器工作台，并非云端渲染服务。
+gd, MCP and the Workbench share one runtime in {runtime_folder}.
+Choose Window → GameDirector → Copy MCP Config, then paste into your agent's MCP settings.
+Noto Sans CJK SC is included for Chinese captions ({runtime_folder}/Fonts, with license and source).
+Films and sound assets stay in your local user data folder. Shooting never automatically
+saves your game scene or installs plugins. This release supports local Unity offline
+shooting and a local browser Workbench, not cloud rendering.
 """, encoding="utf-8")
-    shutil.copy2(root / "docs" / "09-product-workbench.md", out / "WORKBENCH.md")
+    shutil.copy2(root / "docs" / "workbench.md", out / "WORKBENCH.md")
+    dist.copy_release_documents(root, out)
 
     state = dist.git_state(root)
     (out / "candidate.json").write_text(json.dumps(dict(
         product=config["product"], version=version, packages=packages, **state,
-        status="local candidate; not a public release", mediaRuntimeIncluded=False,
+        status=dist.release_status(state, args.release), mediaRuntimeIncluded=False,
         note="media unit (ffmpeg+ffprobe) installs at first use; no curated download is hash-verified yet"),
         indent=2) + "\n", encoding="utf-8")
-    with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(out.iterdir()):
-            z.write(f, f.name)
-    print(json.dumps({"candidate": str(out), "archive": str(archive),
-                      "version": version, "sha256": dist.sha256(archive)}))
+    print(json.dumps({"candidate": str(out), "packages": packages, "version": version}))
 
 
 if __name__ == "__main__":

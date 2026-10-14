@@ -1,0 +1,6 @@
+{
+  "id": "fixture",
+  "name": "v1 fixture",
+  "engine": "Unity",
+  "endpoint": "http://127.0.0.1:39776"
+}

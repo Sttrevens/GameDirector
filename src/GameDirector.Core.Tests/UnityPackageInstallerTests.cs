@@ -8,11 +8,11 @@ namespace GameDirector.Core.Tests;
 /// same semantics) plus the safety cases: conflicts abort before any write,
 /// receipts with escaping paths are rejected, symlinked destinations refuse.</summary>
 [Collection("DistributionEnv")]
-public class UnityPackageInstallerTests
+public class UnityPackageInstallerTests : TempPaths
 {
-    private static (string root, string project, string source) Fixture()
+    private (string root, string project, string source) Fixture()
     {
-        var root = Path.Combine(Path.GetTempPath(), "gd-install-test-" + Guid.NewGuid().ToString("N"));
+        var root = TempPath("gd-install-test-");
         var project = Path.Combine(root, "game");
         Directory.CreateDirectory(Path.Combine(project, "Assets"));
         Directory.CreateDirectory(Path.Combine(project, "ProjectSettings"));
@@ -20,6 +20,7 @@ public class UnityPackageInstallerTests
         Directory.CreateDirectory(source);
         File.WriteAllText(Path.Combine(source, "package.json"), "{\"name\":\"com.gamedirector.test\",\"version\":\"1\"}");
         File.WriteAllText(Path.Combine(source, "owned.cs"), "v1");
+        InstallerRuntimeFixture.Write(source, "1");
         return (root, project, source);
     }
 
@@ -29,7 +30,7 @@ public class UnityPackageInstallerTests
         var (_, project, source) = Fixture();
         var plan = UnityPackageInstaller.Install(source, project, apply: false);
         Assert.Equal("plan", plan.Mode);
-        Assert.Equal(3, plan.Writes); // package.json + owned.cs + receipt
+        Assert.Equal(8, plan.Writes); // two package files + layout + three apps + runtime manifest + receipt
         Assert.False(Directory.Exists(Path.Combine(project, "Packages")));
     }
 
@@ -142,7 +143,7 @@ public class UnityPackageInstallerTests
     public void SymlinkedPackageDestinationIsRefused()
     {
         var (_, project, source) = Fixture();
-        var elsewhere = Path.Combine(Path.GetTempPath(), "gd-link-target-" + Guid.NewGuid().ToString("N"));
+        var elsewhere = TempPath("gd-link-target-");
         Directory.CreateDirectory(elsewhere);
         Directory.CreateDirectory(Path.Combine(project, "Packages"));
         TestDirectoryLinks.Create(Path.Combine(project, "Packages", "com.gamedirector.test"), elsewhere);
@@ -159,7 +160,7 @@ public class UnityPackageInstallerTests
         var first = UnityPackageInstaller.Install(source, project, apply: true);
         // Replace the installed Editor folder with a link and try to write through it.
         var linked = Path.Combine(first.Destination, "Editor");
-        var elsewhere = Path.Combine(Path.GetTempPath(), "gd-link-editor-" + Guid.NewGuid().ToString("N"));
+        var elsewhere = TempPath("gd-link-editor-");
         Directory.CreateDirectory(elsewhere);
         Directory.Delete(linked, recursive: true);
         TestDirectoryLinks.Create(linked, elsewhere);

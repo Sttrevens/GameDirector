@@ -5,12 +5,12 @@ using Xunit;
 
 namespace GameDirector.Core.Tests;
 
-public class MediaActivationBoundaryTests
+public class MediaActivationBoundaryTests : TempPaths
 {
     [Fact]
     public async Task FailureAfterMovingPreviousFileAsideRestoresBothTools()
     {
-        var root = Path.Combine(Path.GetTempPath(), "gd-activation-boundary-" + Guid.NewGuid().ToString("N"));
+        var root = TempPath("gd-activation-boundary-");
         var target = Path.Combine(root, "installed");
         Directory.CreateDirectory(target);
         try

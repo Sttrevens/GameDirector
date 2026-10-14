@@ -15,14 +15,14 @@ internal static class TestRig
         Roles = new List<RoleDescriptor>
         {
             new() { Id = "hero", Kind = "player", DefaultActor = "streamer", PresentAtStart = true },
-            new() { Id = "bigguai", Kind = "monster", DefaultActor = "bigguai", PresentAtStart = false },
+            new() { Id = "sentinel", Kind = "monster", DefaultActor = "sentinel", PresentAtStart = false },
         },
         Actors = new List<ActorDescriptor>
         {
             // Extra TakeNN clips give tests enough distinct actor/clip pairs to
             // build valid catalogs past the bounded candidate set.
             new() { Id = "streamer", Clips = new List<string> { "Idle", "Walk", "Cheer" }.Concat(Enumerable.Range(1, 25).Select(i => "Take" + i.ToString("00"))).ToList() },
-            new() { Id = "bigguai", Clips = new List<string> { "Idle", "RageExpose" } },
+            new() { Id = "sentinel", Clips = new List<string> { "Idle", "RageExpose" } },
         },
         Locations = new List<LocationDescriptor>
         {

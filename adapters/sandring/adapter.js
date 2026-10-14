@@ -26,7 +26,9 @@ export default {
     // The game's procedural poses leave some axes unchanged. Restore its authored
     // bind pose before evaluating so one pose cannot leak into the next take.
     for(const b of actor.userData.directorBase){b.o.position.copy(b.p);b.o.quaternion.copy(b.q);b.o.scale.copy(b.s);}
-    animateFighter(actor,{t:time,speed,pose:clip,gait:actor.userData.gait,hit:1});
+    // The engine passes clip:null when a role has no anim cue; this adapter's
+    // rest pose is its idle.
+    animateFighter(actor,{t:time,speed,pose:clip??'idle',gait:actor.userData.gait,hit:1});
   },
   evaluate(world,time) {world.arena.dust.rotation.y=time*.015;},
 };

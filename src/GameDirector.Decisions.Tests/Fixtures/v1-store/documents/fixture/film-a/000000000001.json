@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "projectId": "fixture",
+  "id": "film-a",
+  "revision": 1,
+  "parentRevision": 0,
+  "requestId": "fixture-save-1",
+  "contentHash": "73398dcb72a94558ec48ea8d6b013ee93ce679a02bb749ae6760105071b59793",
+  "updatedAt": "2026-10-05T16:08:57.014937+00:00",
+  "film": {
+    "version": 1,
+    "title": "\u5BFC\u6F14\u526A\u8F91 \u0022v1\u0022 \u003Cfixture\u003E \u0026 co",
+    "frameRate": 24,
+    "width": 1280,
+    "height": 720,
+    "scenes": [
+      {
+        "id": "s1",
+        "performance": [
+          {
+            "t": 0,
+            "type": "actor.anim",
+            "role": "hero",
+            "clip": "idle",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 0.5,
+            "type": "actor.anim",
+            "role": "hero",
+            "clip": "wave",
+            "fade": 0,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 1,
+            "type": "actor.move",
+            "role": "hero",
+            "fade": 0.2,
+            "to": "gate",
+            "speed": 2.5,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 1.25,
+            "type": "world.timescale",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 0.5,
+            "duration": 1,
+            "sourceIndex": -1,
+            "injected": false
+          },
+          {
+            "t": 2,
+            "type": "marker",
+            "fade": 0.2,
+            "speed": 3,
+            "volume": 1,
+            "scale": 1,
+            "duration": 0,
+            "label": "beat \u2014 \u9AD8\u6F6E",
+            "sourceIndex": -1,
+            "injected": false
+          }
+        ],
+        "shots": [
+          {
+            "id": "wide",
+            "start": 0,
+            "end": 2.5,
+            "purpose": "\u5EFA\u7ACB\u7A7A\u95F4",
+            "camera": {
+              "type": "static",
+              "subject": "hero",
+              "frame": "wide",
+              "from": "current",
+              "durationSeconds": 0,
+              "ease": "inOut",
+              "params": {
+                "pan": 10.5,
+                "tilt": -3
+              }
+            }
+          },
+          {
+            "id": "close",
+            "start": 2.5,
+            "end": 4,
+            "purpose": "\u60C5\u7EEA",
+            "camera": {
+              "type": "dolly",
+              "subject": "hero",
+              "frame": "close",
+              "from": "current",
+              "to": "gate",
+              "durationSeconds": 0,
+              "ease": "out"
+            }
+          }
+        ]
+      }
+    ],
+    "audio": [
+      {
+        "id": "a1",
+        "mediaId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "bus": "music",
+        "at": 0,
+        "sourceStart": 0,
+        "duration": 4,
+        "volume": 0.8,
+        "fadeIn": 0,
+        "fadeOut": 0.5
+      }
+    ],
+    "subtitles": [
+      {
+        "start": 0.5,
+        "end": 2,
+        "text": "\u4F60\u597D\uFF0C\u4E16\u754C\n\u7B2C\u4E8C\u884C"
+      }
+    ]
+  }
+}

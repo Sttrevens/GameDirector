@@ -1,0 +1,2073 @@
+{
+  "version": 1,
+  "timeline": "v2.json",
+  "authoredSha256": "e8cfbe82c4fb948d77cdc444657526c4bd4317ca33de0fb321b649529db22f45",
+  "fps": 24,
+  "beats": [],
+  "sizes": [
+    {
+      "width": 960,
+      "height": 540,
+      "rows": [
+        {
+          "frame": 0,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  6
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9732262505425345,
+                  "pixels": 526
+                },
+                "figure.cx": {
+                  "value": 0.505011097590129
+                },
+                "figure.cy": {
+                  "value": 0.4388612535264757
+                },
+                "margin": {
+                  "value": -0.0477518717447916
+                },
+                "headroom": {
+                  "value": 0.226533564814815
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 43,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  3.13333606719971
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9544795848705145,
+                  "pixels": 515
+                },
+                "figure.cx": {
+                  "value": 0.517889165878296
+                },
+                "figure.cy": {
+                  "value": 0.41299452605070874
+                },
+                "margin": {
+                  "value": -0.0642452663845485
+                },
+                "headroom": {
+                  "value": 0.256172547516999
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 86,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  0.266672134399414
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9467806427567091,
+                  "pixels": 511
+                },
+                "figure.cx": {
+                  "value": 0.513520161310832
+                },
+                "figure.cy": {
+                  "value": 0.41078825703373645
+                },
+                "margin": {
+                  "value": -0.0626020643446181
+                },
+                "headroom": {
+                  "value": 0.25760515001085105
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 87,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  6.38509368896484
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.5493696707266353,
+                  "pixels": 297
+                },
+                "figure.cx": {
+                  "value": 0.488322305679321
+                },
+                "figure.cy": {
+                  "value": 0.3598525577121313
+                },
+                "margin": {
+                  "value": 0.0851677223488136
+                },
+                "headroom": {
+                  "value": 0.37162859881365695
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 110,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  5.95504188537598
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.6852634571216728,
+                  "pixels": 370
+                },
+                "figure.cx": {
+                  "value": 0.4860286871592205
+                },
+                "figure.cy": {
+                  "value": 0.33032376324688956
+                },
+                "margin": {
+                  "value": -0.0123079653139468
+                },
+                "headroom": {
+                  "value": 0.33588533754702
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 134,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  5.80004167556763
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.7900811937120226,
+                  "pixels": 427
+                },
+                "figure.cx": {
+                  "value": 0.4938488642374675
+                },
+                "figure.cy": {
+                  "value": 0.3438742602313007
+                },
+                "margin": {
+                  "value": -0.0511663366247106
+                },
+                "headroom": {
+                  "value": 0.266578702573423
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 135,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.29534912109375,
+                  1.45000004768372,
+                  -0.693798840045929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 1.822546311661049,
+                  "pixels": 984
+                },
+                "figure.cx": {
+                  "value": 0.5271618922551475
+                },
+                "figure.cy": {
+                  "value": 0.10287901339707556
+                },
+                "margin": {
+                  "value": -0.808394142433449
+                },
+                "headroom": {
+                  "value": 0.10953888363308395
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 153,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.18988037109375,
+                  1.45000004768372,
+                  -0.553173840045929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 2.3887839140715403,
+                  "pixels": 1290
+                },
+                "figure.cx": {
+                  "value": 0.4370281338691713
+                },
+                "figure.cy": {
+                  "value": 0.046555540296770004
+                },
+                "margin": {
+                  "value": -1.147836416739
+                },
+                "headroom": {
+                  "value": 0.001535177230834961
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 172,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.15006506443024,
+                  1.45000004768372,
+                  -0.500086784362793
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 2.56220169067383,
+                  "pixels": 1384
+                },
+                "figure.cx": {
+                  "value": 0.39555286566416403
+                },
+                "figure.cy": {
+                  "value": -0.010036623919455034
+                },
+                "margin": {
+                  "value": -1.29113746925637
+                },
+                "headroom": {
+                  "value": -0.00048297643661010525
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 173,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -1.29993486404419,
+                  1.45000004768372,
+                  0.700036644935608
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 1.9203348936858031,
+                  "pixels": 1037
+                },
+                "figure.cx": {
+                  "value": 0.5293000698089599
+                },
+                "figure.cy": {
+                  "value": 0.13749672925030848
+                },
+                "margin": {
+                  "value": -0.822670717592593
+                },
+                "headroom": {
+                  "value": 0.056011825137668
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 192,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.880859136581421,
+                  1.45000004768372,
+                  0.890800356864929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 2.2141448126898897,
+                  "pixels": 1196
+                },
+                "figure.cx": {
+                  "value": 0.6082723299662275
+                },
+                "figure.cy": {
+                  "value": 0.08574468824598502
+                },
+                "margin": {
+                  "value": -1.02132771809896
+                },
+                "headroom": {
+                  "value": 0.021179259264911043
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 211,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.435027778148651,
+                  1.45000004768372,
+                  1.00590670108795
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 1.709644473923578,
+                  "pixels": 923
+                },
+                "figure.cx": {
+                  "value": 0.5392407337824505
+                },
+                "figure.cy": {
+                  "value": 0.13168765218169604
+                },
+                "margin": {
+                  "value": -0.723134584780093
+                },
+                "headroom": {
+                  "value": 0.11127534795690497
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 212,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  3.20068502426147,
+                  1.25,
+                  -0.0386285781860352
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.8093019414831087,
+                  "pixels": 437
+                },
+                "figure.cx": {
+                  "value": 0.488360595703125
+                },
+                "figure.cy": {
+                  "value": 0.4638299800731516
+                },
+                "margin": {
+                  "value": 0.0591790093315973
+                },
+                "headroom": {
+                  "value": 0.19147644042968703
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 1.64183586968316,
+                  "pixels": 887
+                },
+                "figure.cx": {
+                  "value": 1.60117518107096
+                },
+                "figure.cy": {
+                  "value": 0.34108474166305003
+                },
+                "margin": {
+                  "value": -1.1306383768717398
+                },
+                "headroom": {
+                  "value": 0.05373743198536096
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 273,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.10600709915161,
+                  1.25,
+                  4.30246210098267
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.78156492445204,
+                  "pixels": 422
+                },
+                "figure.cx": {
+                  "value": 0.495145416259766
+                },
+                "figure.cy": {
+                  "value": 0.46835775022153503
+                },
+                "margin": {
+                  "value": 0.0775752879955151
+                },
+                "headroom": {
+                  "value": 0.20087024547435595
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.530873390480324,
+                  "pixels": 287
+                },
+                "figure.cx": {
+                  "value": 0.5557600975036621
+                },
+                "figure.cy": {
+                  "value": 0.509797611942998
+                },
+                "margin": {
+                  "value": 0.22476569281684
+                },
+                "headroom": {
+                  "value": 0.254083421495226
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 335,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -3.55397439002991,
+                  1.25,
+                  1.31142044067383
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.8435632069905595,
+                  "pixels": 456
+                },
+                "figure.cx": {
+                  "value": 0.4442660172780355
+                },
+                "figure.cy": {
+                  "value": 0.5041110780504012
+                },
+                "margin": {
+                  "value": 0.07410731845431895
+                },
+                "headroom": {
+                  "value": 0.14256286621093806
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.8359371467872903,
+                  "pixels": 451
+                },
+                "figure.cx": {
+                  "value": 0.15862013300259895
+                },
+                "figure.cy": {
+                  "value": 0.5049094235455549
+                },
+                "margin": {
+                  "value": -0.0289492011070251
+                },
+                "headroom": {
+                  "value": 0.14443609449598505
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 336,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -3.26278495788574,
+                  1.22129845619202,
+                  1.27550029754639
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 1.007575109269888,
+                  "pixels": 544
+                },
+                "figure.cx": {
+                  "value": 0.5287803490956625
+                },
+                "figure.cy": {
+                  "value": 0.5221539373751061
+                },
+                "margin": {
+                  "value": -0.025941492010050027
+                },
+                "headroom": {
+                  "value": 0.07739993907787202
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.9299893008338076,
+                  "pixels": 502
+                },
+                "figure.cx": {
+                  "value": 0.1250443418820697
+                },
+                "figure.cy": {
+                  "value": 0.5283926018962152
+                },
+                "margin": {
+                  "value": -0.0901678800582886
+                },
+                "headroom": {
+                  "value": 0.09583494398328996
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 359,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -1.73329544067383,
+                  2.71137237548828,
+                  3.86520957946777
+                ]
+              },
+              "camera.fov": {
+                "value": 47.7501449584961
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.7822718161123774,
+                  "pixels": 422
+                },
+                "figure.cx": {
+                  "value": 0.46908489863077796
+                },
+                "figure.cy": {
+                  "value": 0.46602141062418634
+                },
+                "margin": {
+                  "value": 0.0748855025679976
+                },
+                "headroom": {
+                  "value": 0.20162609241626905
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.555233835290979,
+                  "pixels": 300
+                },
+                "figure.cx": {
+                  "value": 0.346228647232056
+                },
+                "figure.cy": {
+                  "value": 0.6381569544474286
+                },
+                "margin": {
+                  "value": 0.08422612790708195
+                },
+                "headroom": {
+                  "value": 0.11669841342502196
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 383,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.00418949127197266,
+                  4.39591884613037,
+                  6.79290676116943
+                ]
+              },
+              "camera.fov": {
+                "value": 51.9897270202637
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.339195110179759,
+                  "pixels": 183
+                },
+                "figure.cx": {
+                  "value": 0.49810061454772947
+                },
+                "figure.cy": {
+                  "value": 0.5005546428539135
+                },
+                "margin": {
+                  "value": 0.329847802056207
+                },
+                "headroom": {
+                  "value": 0.368591845477069
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.26746020846896695,
+                  "pixels": 144
+                },
+                "figure.cx": {
+                  "value": 0.5008063952128095
+                },
+                "figure.cy": {
+                  "value": 0.6138197015832975
+                },
+                "margin": {
+                  "value": 0.25245019418221903
+                },
+                "headroom": {
+                  "value": 0.27551102814851003
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "width": 540,
+      "height": 960,
+      "rows": [
+        {
+          "frame": 0,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  6
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9732262452443435,
+                  "pixels": 934
+                },
+                "figure.cx": {
+                  "value": 0.5158375492802355
+                },
+                "figure.cy": {
+                  "value": 0.4388612508773802
+                },
+                "margin": {
+                  "value": -0.17285495334201006
+                },
+                "headroom": {
+                  "value": 0.22653355598449698
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 43,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  3.13333606719971
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9544796069463092,
+                  "pixels": 916
+                },
+                "figure.cx": {
+                  "value": 0.5565385323983639
+                },
+                "figure.cy": {
+                  "value": 0.4129945158958434
+                },
+                "margin": {
+                  "value": -0.2173142044632499
+                },
+                "headroom": {
+                  "value": 0.25617252985636396
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 86,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 5,
+            "from": "cam_low_side"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  2.40000009536743,
+                  0.350000023841858,
+                  0.266672134399414
+                ]
+              },
+              "camera.fov": {
+                "value": 34
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.9467806180318195,
+                  "pixels": 909
+                },
+                "figure.cx": {
+                  "value": 0.5427303879349304
+                },
+                "figure.cy": {
+                  "value": 0.41078826586405426
+                },
+                "margin": {
+                  "value": -0.19151758264611995
+                },
+                "headroom": {
+                  "value": 0.25760515530904105
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 87,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  6.38509368896484
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.5493696530659994,
+                  "pixels": 527
+                },
+                "figure.cx": {
+                  "value": 0.4630927227161548
+                },
+                "figure.cy": {
+                  "value": 0.35985258420308436
+                },
+                "margin": {
+                  "value": 0.0851677576700847
+                },
+                "headroom": {
+                  "value": 0.371628602345784
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 110,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  5.95504188537598
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.6852634429931638,
+                  "pixels": 658
+                },
+                "figure.cx": {
+                  "value": 0.4558437102370794
+                },
+                "figure.cy": {
+                  "value": 0.33032379150390606
+                },
+                "margin": {
+                  "value": -0.0123079299926758
+                },
+                "headroom": {
+                  "value": 0.33588533401489296
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 134,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 7,
+            "from": "cam_ots_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.5,
+                  2.09999990463257,
+                  5.80004167556763
+                ]
+              },
+              "camera.fov": {
+                "value": 20
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 0.7900811195373532,
+                  "pixels": 758
+                },
+                "figure.cx": {
+                  "value": 0.4805593618640193
+                },
+                "figure.cy": {
+                  "value": 0.34387427965799944
+                },
+                "margin": {
+                  "value": -0.0511662801106771
+                },
+                "headroom": {
+                  "value": 0.266578690210978
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 135,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.29534912109375,
+                  1.45000004768372,
+                  -0.693798840045929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 1.8225464105606082,
+                  "pixels": 1750
+                },
+                "figure.cx": {
+                  "value": 0.5858450147840705
+                },
+                "figure.cy": {
+                  "value": 0.10287896394729606
+                },
+                "margin": {
+                  "value": -0.808394241333008
+                },
+                "headroom": {
+                  "value": 0.10953888098398801
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 153,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.18988037109375,
+                  1.45000004768372,
+                  -0.553173840045929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 2.38878378868103,
+                  "pixels": 2293
+                },
+                "figure.cx": {
+                  "value": 0.30097786232277
+                },
+                "figure.cy": {
+                  "value": 0.04655559062957504
+                },
+                "margin": {
+                  "value": -1.14783630371094
+                },
+                "headroom": {
+                  "value": 0.001535177230834961
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 172,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 10,
+            "from": "cam_single_bolt"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.15006506443024,
+                  1.45000004768372,
+                  -0.500086784362793
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 2.56220191319784,
+                  "pixels": 2460
+                },
+                "figure.cx": {
+                  "value": 0.16989553946035996
+                },
+                "figure.cy": {
+                  "value": -0.010036738713580018
+                },
+                "margin": {
+                  "value": -1.41748702437789
+                },
+                "headroom": {
+                  "value": -0.00048297643661010525
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 173,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -1.29993486404419,
+                  1.45000004768372,
+                  0.700036644935608
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 1.920334927241009,
+                  "pixels": 1844
+                },
+                "figure.cx": {
+                  "value": 0.592602680347584
+                },
+                "figure.cy": {
+                  "value": 0.13749671777089556
+                },
+                "margin": {
+                  "value": -0.822670745849609
+                },
+                "headroom": {
+                  "value": 0.056011827786763946
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 192,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.880859136581421,
+                  1.45000004768372,
+                  0.890800356864929
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 2.21414480209351,
+                  "pixels": 2126
+                },
+                "figure.cx": {
+                  "value": 0.8421941262704359
+                },
+                "figure.cy": {
+                  "value": 0.08574468294779503
+                },
+                "margin": {
+                  "value": -1.0428471317997698
+                },
+                "headroom": {
+                  "value": 0.021179258823394997
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 211,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 13,
+            "from": "cam_single_pip"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.435027778148651,
+                  1.45000004768372,
+                  1.00590670108795
+                ]
+              },
+              "camera.fov": {
+                "value": 30
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "pip": {
+                "figure.h": {
+                  "value": 1.709644502401352,
+                  "pixels": 1641
+                },
+                "figure.cx": {
+                  "value": 0.624020060786495
+                },
+                "figure.cy": {
+                  "value": 0.131687638163567
+                },
+                "margin": {
+                  "value": -0.723134613037109
+                },
+                "headroom": {
+                  "value": 0.11127534707387299
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 212,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  3.20068502426147,
+                  1.25,
+                  -0.0386285781860352
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.8093019644419354,
+                  "pixels": 777
+                },
+                "figure.cx": {
+                  "value": 0.46321379520274986
+                },
+                "figure.cy": {
+                  "value": 0.4638299703598023
+                },
+                "margin": {
+                  "value": -0.0218824139347783
+                },
+                "headroom": {
+                  "value": 0.19147644042968703
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 1.641835912068687,
+                  "pixels": 1576
+                },
+                "figure.cx": {
+                  "value": 3.9802576135705996
+                },
+                "figure.cy": {
+                  "value": 0.3410847345987965
+                },
+                "margin": {
+                  "value": -4.65362277560764
+                },
+                "headroom": {
+                  "value": 0.053737433751424035
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 273,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  1.10600709915161,
+                  1.25,
+                  4.30246210098267
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.7815649191538496,
+                  "pixels": 750
+                },
+                "figure.cx": {
+                  "value": 0.48465710569311143
+                },
+                "figure.cy": {
+                  "value": 0.4683577617009482
+                },
+                "margin": {
+                  "value": -0.0351043948420772
+                },
+                "headroom": {
+                  "value": 0.20087024370829298
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.530873394012451,
+                  "pixels": 510
+                },
+                "figure.cx": {
+                  "value": 0.6762294628002015
+                },
+                "figure.cy": {
+                  "value": 0.5097976207733155
+                },
+                "margin": {
+                  "value": -0.03768853081597001
+                },
+                "headroom": {
+                  "value": 0.254083410898844
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 335,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 18,
+            "from": "cam_side_right"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -3.55397439002991,
+                  1.25,
+                  1.31142044067383
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.8435631831487019,
+                  "pixels": 810
+                },
+                "figure.cx": {
+                  "value": 0.3238529947068955
+                },
+                "figure.cy": {
+                  "value": 0.5041110873222351
+                },
+                "margin": {
+                  "value": -0.10302835393835
+                },
+                "headroom": {
+                  "value": 0.14256286621093806
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.8359371662139888,
+                  "pixels": 802
+                },
+                "figure.cx": {
+                  "value": -0.5789290127930817
+                },
+                "figure.cy": {
+                  "value": 0.5049094120661415
+                },
+                "margin": {
+                  "value": -1.17174072265625
+                },
+                "headroom": {
+                  "value": 0.14443608919779505
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 336,
+          "auto": [
+            "first"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -3.26278495788574,
+                  1.22129845619202,
+                  1.27550029754639
+                ]
+              },
+              "camera.fov": {
+                "value": 44
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 1.0075751225153564,
+                  "pixels": 967
+                },
+                "figure.cx": {
+                  "value": 0.5909601070262758
+                },
+                "figure.cy": {
+                  "value": 0.5221539298693317
+                },
+                "margin": {
+                  "value": -0.11021287706162997
+                },
+                "headroom": {
+                  "value": 0.07739993731180805
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.9299892723560329,
+                  "pixels": 893
+                },
+                "figure.cx": {
+                  "value": -0.6850451023490326
+                },
+                "figure.cy": {
+                  "value": 0.5283926159143446
+                },
+                "margin": {
+                  "value": -1.36522205494068
+                },
+                "headroom": {
+                  "value": 0.09583493868509896
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 359,
+          "auto": [
+            "mid"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -1.73329544067383,
+                  2.71137237548828,
+                  3.86520957946777
+                ]
+              },
+              "camera.fov": {
+                "value": 47.7501449584961
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.7822718302408855,
+                  "pixels": 751
+                },
+                "figure.cx": {
+                  "value": 0.40229297214084103
+                },
+                "figure.cy": {
+                  "value": 0.4660214106241862
+                },
+                "margin": {
+                  "value": -0.221873700177228
+                },
+                "headroom": {
+                  "value": 0.20162609418233202
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.5552337964375811,
+                  "pixels": 533
+                },
+                "figure.cx": {
+                  "value": 0.014006551106771015
+                },
+                "figure.cy": {
+                  "value": 0.6381569703420005
+                },
+                "margin": {
+                  "value": -0.451482476128472
+                },
+                "headroom": {
+                  "value": 0.11669841607411702
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        },
+        {
+          "frame": 383,
+          "auto": [
+            "last"
+          ],
+          "shot": {
+            "authoredCue": 26,
+            "from": "current"
+          },
+          "metrics": {
+            "values": {
+              "camera.position": {
+                "vector": [
+                  -0.00418949127197266,
+                  4.39591884613037,
+                  6.79290676116943
+                ]
+              },
+              "camera.fov": {
+                "value": 51.9897270202637
+              },
+              "horizonRoll": {
+                "value": 0
+              }
+            },
+            "roles": {
+              "bolt": {
+                "figure.h": {
+                  "value": 0.339195092519124,
+                  "pixels": 326
+                },
+                "figure.cx": {
+                  "value": 0.493997065226237
+                },
+                "figure.cy": {
+                  "value": 0.50055464108785
+                },
+                "margin": {
+                  "value": 0.289671466968678
+                },
+                "headroom": {
+                  "value": 0.36859184900919595
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              },
+              "pip": {
+                "figure.h": {
+                  "value": 0.267460219065348,
+                  "pixels": 257
+                },
+                "figure.cx": {
+                  "value": 0.502548599243164
+                },
+                "figure.cy": {
+                  "value": 0.6138197104136149
+                },
+                "margin": {
+                  "value": 0.252450180053711
+                },
+                "headroom": {
+                  "value": 0.27551104227701795
+                },
+                "state": {
+                  "text": "in-front"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

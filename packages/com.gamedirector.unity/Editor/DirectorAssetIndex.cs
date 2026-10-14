@@ -24,7 +24,7 @@ namespace GameDirector.Unity.Editor
         public static IEnumerable<string> Paths(string folder)
         {
             if (!AssetDatabase.IsValidFolder(folder) || !(folder == "Assets" || folder.StartsWith("Assets/", StringComparison.Ordinal)))
-                throw new ArgumentException("Select a folder inside Assets.");
+                throw new ArgumentException(DirectorUi.T("assetFolderRequired"));
             return new[] { "t:Prefab", "t:Model", "t:AnimationClip", "t:AudioClip", "t:Scene" }
                 .SelectMany(type => AssetDatabase.FindAssets(type, new[] { folder })).Distinct().Select(AssetDatabase.GUIDToAssetPath).OrderBy(p => p, StringComparer.Ordinal);
         }

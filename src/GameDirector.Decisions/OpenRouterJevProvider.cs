@@ -7,7 +7,7 @@ namespace GameDirector.Decisions;
 
 /// <summary>Connection settings for the decisions endpoint. Independent from the
 /// generative plan provider: its own endpoint, model and memory-only key.</summary>
-public sealed record DecisionProviderSettings(string Endpoint, string Model, string ApiKey)
+public sealed record DecisionProviderSettings(string Endpoint, string Model, string? ApiKey)
 {
     public static DecisionProviderSettings Official(string apiKey) =>
         new(OpenRouterJevProvider.DefaultEndpoint, OpenRouterJevProvider.DefaultModel, apiKey);

@@ -1,0 +1,1 @@
+{"version":"0.1","id":"three-ts-walk","cues":[{"t":0,"type":"actor.move","role":"hero","to":"end","speed":1},{"t":0,"type":"camera.shot","shot":{"type":"lockoff","subject":"hero","from":"front","frame":"full","durationSeconds":3}}]}

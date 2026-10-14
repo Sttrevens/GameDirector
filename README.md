@@ -1,174 +1,171 @@
+<div align="center">
+
 # GameDirector
 
-**LLM is the director, not the puppeteer.**
+**Let AI direct your game.**
 
-GameDirector lets an LLM direct in-game cameras, character animation, monster
-entrances, audio and pacing — producing a deterministic, version-controlled
-timeline (shot list) that a playback engine executes precisely inside the game.
-Use it to record trailers, PVs and machinima automatically, then verify, edit
-and deliver the finished film through a reproducible pipeline.
+Describe a scene in plain words. An AI agent directs it as a shot list,<br>
+and your engine shoots it frame by frame. Give notes, and it re-shoots.
 
 [![Verify](https://github.com/Sttrevens/GameDirector/actions/workflows/verify.yml/badge.svg)](https://github.com/Sttrevens/GameDirector/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](global.json)
-[![Version](https://img.shields.io/badge/version-0.2.0--alpha.1-orange)](Directory.Build.props)
+[![Release](https://img.shields.io/badge/release-0.1.0-orange)](https://github.com/Sttrevens/GameDirector/releases)
 
-[中文文档](docs/README.zh-CN.md) · [Architecture](docs/01-architecture.md) · [DSL spec](docs/02-dsl-spec-v0.1.md) · [Directing playbook](docs/07-directing-playbook.md)
+[Quick start](#quick-start) · [Connect your agent](#connect-your-agent) · [Docs](#learn-more) · [中文](docs/README.zh-CN.md)
 
-![A three-shot film directed by an LLM and captured inside Unity](docs/media/demo.gif)
+<img src="docs/media/hero.webp" width="100%" alt="Two robots, Bolt and Pip, wave and dance in a starship corridor while the camera orbits them, a shot directed by AI">
 
-*One timeline → three shots: the cameraman robot, the monster reveal, the standoff — directed, captured and edited by the pipeline itself.
+</div>
 
-🎬 **Demo films:** [《别停机 / KEEP ROLLING》](samples/timelines/directors-cut/README.md) —
-three timelines, twelve edit decisions, subtitles and score, produced end-to-end
-by this pipeline — and the [CAM DOWN! animated PV](samples/timelines/camdown-pv/README.md).
+https://github.com/user-attachments/assets/f4008315-11ab-40ab-a28e-a7e5a67bd246
 
-## Why not just let the AI drive the editor?
+<p align="center"><sub>Every shot in this film was directed by AI and shot with GameDirector, using the <a href="samples/timelines/stardeck">Stardeck sample</a> in this repo.<br>Assets: RobotExpressive (CC0, Tomás Laulhé) · Space Ship Hallway (CC BY 4.0, yeeyeeman) · Music: "Dreaming Big" by Ahjay Stelino (Mixkit)</sub></p>
 
-Editor-automation MCPs (e.g. Unity-MCP / "AI Game Developer") let an AI
-manipulate the editor in real time — great for development, but every run is
-different and nothing is reproducible. GameDirector takes the opposite bet:
+## How it works
 
-1. **The LLM is a director, not a puppeteer.** It works offline, producing a
-   deterministic timeline asset. A playback engine executes it exactly. No
-   per-frame remote control.
-2. **The protocol, DSL and director agent are generic; each game contributes a
-   self-describing manifest plus a thin adapter.** Portability is proven by a
-   second game, not claimed.
-3. **Games describe themselves.** On connect, the client pulls a capability
-   manifest (actors, clips, locations, shot vocabulary, audio). The LLM
-   composes only within it; the compiler falsifies everything else.
-4. **Determinism first.** Same timeline + same dt sequence ⇒ same event
-   sequence. Timelines can be hand-edited, LLM-generated, version-controlled
-   and replayed bit-for-bit.
-5. **Authority boundaries are explicit.** v0 runs offline/sandboxed (director
-   mode). Networked capture is a v1 design point, not hidden behavior.
-6. **Creation, judgment and execution are separated.** `IPlanGenerator`
-   proposes, `IDecisionProvider` chooses among evidenced legal candidates, the
-   compiler and deterministic player verify and execute. Production jobs never
-   call a model.
+| 1 · Assets | 2 · Direct | 3 · Revise |
+|:---:|:---:|:---:|
+| <img src="docs/media/step-1-assets.jpg" alt="The robots Bolt and Pip, their clips and the starship corridor, from the game's manifest"> | <img src="docs/media/step-2-direct.jpg" alt="A one-line prompt becomes a compiled three-shot storyboard"> | <img src="docs/media/step-3-revise.jpg" alt="Plain-language notes produce a revised six-shot cut"> |
+| Your game describes itself: characters, animations, faces, props, locations and camera moves. The AI works only with what is on set. | Say what you want. The AI writes a timeline, and every role, clip and mark is checked before a single frame is shot. | Give notes in plain language. The AI revises the timeline and the engine re-shoots it. |
 
-## Install (no .NET / Python / Node required)
+**AI directs. The engine executes.**
 
-Grab the full standalone distribution for your platform
-(`win-x64`, `osx-arm64`, `osx-x64`, `linux-x64`) from
-[Releases](https://github.com/Sttrevens/GameDirector/releases) and unpack:
+- **Reproducible.** A timeline is a plain JSON file. Shoot it again and you get the same frames. Diff it, version it, edit it by hand.
+- **Verifiable.** Anything that is not in the game's manifest is rejected before the shoot. After the shoot, `gd review` checks the framing and `gd measure` reads back the exact camera and character positions.
+- **Pluggable.** Unity, Godot and Three.js today. Any agent that speaks MCP can direct.
 
-```text
-gd doctor                        # environment + media capability check
-gd unity install --project <Unity project>   # plan-only; add --apply to write
-gd workbench --open true         # the standalone director window
-gd mcp                           # stdio MCP server for any LLM host
-gd media status                  # FFmpeg/ffprobe status + installer
+## Engines
+
+|  | Unity | Godot | Three.js |
+|---|---|---|---|
+| Install | Package `.tgz` | Addon `.zip` | Node bridge + adapter |
+| Shoot takes | ✅ | ✅ | ✅ |
+| Editor panel | Director Workbench | GameDirector dock | — |
+| Framing review (`gd review`) | Subject centre | Every character | Every character |
+| Frame measurement (`gd measure`) | — | ✅ | ✅ |
+
+Unreal Engine is next.
+
+## Quick start
+
+Everything is on the [Releases](https://github.com/Sttrevens/GameDirector/releases) page. Each download is self-contained: you do not need .NET, Node or Python.
+
+| You use | Download | Size |
+|---|---|---|
+| Unity | `com.gamedirector.unity-0.1.0-<platform>.tgz` | 46–59 MB |
+| Godot | `gamedirector-0.1.0-<platform>` + `gamedirector-godot-0.1.0.zip` | 50–64 MB |
+| Three.js or the command line | `gamedirector-0.1.0-<platform>` | 50–64 MB |
+
+Platforms: `win-x64`, `osx-arm64` (Apple silicon), `osx-x64` (Intel Mac) and `linux-x64`. On macOS and Linux, one command downloads and unpacks it:
+
+```bash
+curl -fsSL https://github.com/Sttrevens/GameDirector/releases/download/v0.1.0/gamedirector-0.1.0-osx-arm64.tar.gz | tar -xz
 ```
 
-Everything is published self-contained with SHA-256 manifests; installers are
-plan-only by default, idempotent on repeat, and refuse to overwrite local
-edits. [Full distribution contract](docs/16-distribution-and-install.md).
+If you downloaded the archive in a browser instead, macOS marks the unpacked tools as downloaded and may refuse to run them. Run `xattr -dr com.apple.quarantine gamedirector-0.1.0-osx-arm64` right after unpacking, before you start any tool. If macOS has already blocked a tool, unpack again and clear the mark first.
 
-**Unity:** import the per-platform `com.gamedirector.unity-<version>-<rid>.tgz`
-(Add package from tarball). The bundle carries the complete offline workbench
-runtime and a CJK subtitle font — Unity needs no SDK and no network. Then
-**Tools → GameDirector → Create Independent Example** gives you a self-contained
-film with characters, animation, audio and three shots to try immediately.
+The tools live in the `bin/` folder; nothing is added to your PATH. Encoding films needs FFmpeg: `bin/gd doctor` checks for it and `bin/gd media install` sets it up.
 
-**MCP hosts:** point your host at the packaged server:
+This release is tested on macOS with Apple silicon. The Windows, Linux and Intel Mac builds are included and less tested.
+
+### Unity (2022.3+)
+
+1. In Package Manager, choose **+ → Add package from tarball** and pick the `.tgz`.
+2. **Window → GameDirector → Create Independent Example** builds a scene with characters, animation, audio and three shots.
+3. Enter Play Mode and open **Window → GameDirector → Director Workbench** to direct and shoot, or use **Window → GameDirector → Copy MCP Config** to hand the set to your agent.
+
+### Godot (4.6+)
+
+1. Unzip `gamedirector-godot-0.1.0.zip` into your project and enable **GameDirector** in **Project Settings → Plugins**. In **Editor → Editor Settings**, set `gamedirector/gd_path` to the downloaded `bin/gd`.
+2. Tag your scene: set `gamedirector_role` on characters and `gamedirector_location` on `Marker3D` nodes. The **GameDirector** dock lists everything it finds.
+3. Click **Start bridge**, then **Copy MCP config**, and paste the config into your agent.
+
+The full walkthrough is in the [Godot guide](docs/godot.md). Try it on the [Stardeck sample](samples/godot/stardeck/README.md).
+
+### Three.js
+
+Write a small adapter for your scene and run the bridge. The [Three.js guide](packages/gamedirector-three/README.md) explains both, and [`adapters/stardeck`](adapters/stardeck) is a working example.
+
+## Connect your agent
+
+GameDirector is an MCP server. Add it to Claude Code, Cursor, Codex or any MCP host:
 
 ```json
-{ "mcpServers": { "gamedirector": { "command": "<dist>/mcp/gamedirector-mcp" } } }
+{
+  "mcpServers": {
+    "gamedirector": {
+      "command": "<download folder>/bin/gd",
+      "args": ["mcp"],
+      "env": { "GAMEDIRECTOR_ENDPOINT": "http://127.0.0.1:39779" }
+    }
+  }
+}
 ```
 
-Agent operating instructions ship with the package at
-[`skills/gamedirector/SKILL.md`](skills/gamedirector/SKILL.md).
+- **Unity:** **Window → GameDirector → Copy MCP Config** copies the right config for you.
+- **Godot:** the dock's **Copy MCP config** button copies this, with your bridge's port.
+- **Codex:** use the same command, args and env under `mcp_servers.gamedirector` in TOML.
 
-## Quickstart from source (no Unity needed to verify the kernel)
+Then just ask your agent:
+
+> *A 16-second short: Bolt meets Pip in a starship corridor. They wave, then dance.*
+
+And when you want it different:
+
+> *Pacing feels flat. Open low, tracking Bolt. Give Pip a close-up when they meet, then orbit them during the dance.*
+
+For better results, give your agent the directing playbook in [`skills/gamedirector/SKILL.md`](skills/gamedirector/SKILL.md).
+
+## Command line
+
+Everything the agent does is also a plain command (`bin/gd` in the download). Commands talk to the Unity bridge by default; add `--endpoint http://127.0.0.1:39779` for Godot.
 
 ```bash
-dotnet test                                    # kernel unit tests
-dotnet run --project src/GameDirector.Cli -- \
-  validate samples/timelines/pv_grimforest_demo.json \
-  --manifest adapters/cdrebirth/manifests/cdrebirth.manifest.json
-dotnet run --project src/GameDirector.Cli -- grammar   # DSL cheat sheet
+gd validate timeline.json                  # check a timeline against the live game
+gd take timeline.json --out take-01        # shoot it, frame by frame
+gd review take-01                          # framing report for every shot
+gd measure timeline.json --frames 0,48 --out measure-01   # exact camera and character numbers
+gd edit edit.json --out cut-01             # cut takes into a finished film
+gd expect-record timeline.json --out shot.expect.json --endpoint <bridge>   # lock a shot's numbers
+gd expect-check  timeline.json --expect shot.expect.json --endpoint <bridge> # catch regressions
 ```
 
-With a game connected (Editor in play mode, sandbox scene):
+Every take ships with receipts: the timeline, the game manifest, a hash for every frame, and the encoded `picture.mp4`. See [the production pipeline](docs/production.md).
+
+## Why GameDirector
+
+Editor-automation tools let an AI click around your editor in real time. That helps while you build a game, but no two runs come out the same. GameDirector works like a film set instead:
+
+- **The AI writes a script, not mouse moves.** The output is a timeline you can read, review and keep.
+- **Your game says what is on set.** Roles, clips and locations come from the game, so the AI cannot invent things that do not exist.
+- **The engine shoots it the same way every time,** so a note changes only what you asked to change.
+
+## Learn more
+
+- [Directing playbook](docs/directing-playbook.md): shot types, pacing and aspect ratios
+- [Timeline format](docs/timeline-format.md)
+- [Architecture](docs/architecture.md)
+- [Engine contract](docs/contract/README.md): add your own engine
+- [Install and distribution](docs/install.md)
+- [Changelog](CHANGELOG.md)
+
+<details>
+<summary><b>Build from source</b></summary>
 
 ```bash
-dotnet run --project src/GameDirector.Cli -- manifest --endpoint http://127.0.0.1:39777
-dotnet run --project src/GameDirector.Cli -- play samples/timelines/pv_grimforest_demo.json
-dotnet run --project src/GameDirector.Cli -- capture --out captures/frame.png
+dotnet test
+dotnet run --project src/GameDirector.Cli -- grammar     # timeline cheat sheet
+dotnet run --project src/GameDirector.Cli -- --help
 ```
 
-## Production workflow
-
-Repeatable frame-stepped takes plus a game-neutral edit renderer:
-
-```bash
-gd take timeline.json --out captures/edit/take-001 --fps 24 --width 1280 --height 720
-gd edit edit.json --out captures/edit/cut-001
-```
-
-Each take writes its source timeline, live manifest, numbered frames,
-event/visibility receipts, `picture.mp4` and a verified `take.json` with
-source/media hashes. Edit plans render graded H.264 segments that concatenate
-without audio priming; output contains `final.mp4`, a contact sheet and
-`delivery.json`. Interrupted takes resume safely. See
-[docs/05-production-contract.md](docs/05-production-contract.md).
-
-Video requires FFmpeg with `libx264` (+ `libass` for captioned edits) and
-ffprobe; `gd media status` checks the whole contract and offers installers.
-
-## Layers
-
-| Layer | Contents | Where | Generality |
-|---|---|---|---|
-| L0 transport | In-engine bridge (HTTP JSON-RPC), out-of-process MCP server / CLI | `packages/com.gamedirector.unity`, `src/GameDirector.Mcp`, `src/GameDirector.Cli` | engine-level generic |
-| L1 director DSL | Shot language + timeline primitives + compiler + deterministic player | `src/GameDirector.Core` (zero-dependency netstandard2.1) | fully generic |
-| L2 capability manifest | Game self-description: roles / actors+clips / locations / audio / shotTypes | `adapters/*/manifests/*.json` + runtime endpoint | mechanism generic, content per game |
-| L3 game adapter | DSL → concrete engine/game calls | `packages/com.gamedirector.unity` (generic base) + `adapters/cdrebirth` (first instance) | one thin layer per game |
-
-## Repo map
-
-```
-src/GameDirector.Core        # DSL model, manifest model, timeline compiler, deterministic player (zero-dep)
-src/GameDirector.Client      # JSON + game-bridge HTTP client (net8, shared by CLI/MCP)
-src/GameDirector.Decisions   # finite-candidate decision protocol, evidence & audit models
-src/GameDirector.Cli         # gd: validate / play / stop / status / manifest / capture / take / edit / grammar
-src/GameDirector.Mcp         # MCP server (stdio) exposing the same capabilities to any LLM host
-src/GameDirector.Workbench   # standalone director window, model API access, persistent film jobs
-src/GameDirector.Core.Tests  # compiler & player unit tests + sample asset regression guard
-packages/com.gamedirector.unity  # Unity bridge: HttpListener service, shot interpreter, frame capture
-packages/gamedirector-three  # Three.js interpreter (second engine path)
-adapters/                    # per-game manifests + adapter skeletons (cdrebirth, sandring)
-samples/timelines            # hand-authored shot lists for tests and demos
-docs                         # architecture / DSL spec / adapter plans / roadmap
-tools                        # release packaging, installer, contract tests
-```
-
-## Status — 0.2.0-alpha.1
-
-- ✅ Kernel + tests + CLI/MCP + Unity bridge; first on-set capture in a real
-  co-op roguelite (24 s timeline, event stream matching compiled output).
-- ✅ Verified take/edit/delivery pipeline with hash receipts, resume and
-  reshoot; standalone Workbench (alpha) with asset discovery, offline staging,
-  multi-shot rough cuts, subtitles and directed revisions.
-- ✅ Windows validation on Unity 2022.3.34f1 (sound, CJK subtitles, version
-  conflicts, partial reshoot); historical macOS validation for Unity and
-  Three.js paths.
-- ⏳ Not yet: TTS, lip-sync, UE/Godot plugins; macOS/Linux re-validation of the
-  new release pipeline; public release acceptance. Second full game
-  integration is the open generality proof.
-
-Honest limits and capability boundaries:
-[docs/09-product-workbench.md](docs/09-product-workbench.md) ·
-[Roadmap](docs/04-roadmap.md)
+</details>
 
 ## Contributing
 
-Contributions welcome — especially **second-game adapters** (the architecture
-is built for them: one manifest + one thin layer), new shot types, and
-Godot/UE exploration. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome, especially adapters for your own game, new shot types and engine ports (Unreal!). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## License
+## Credits and license
 
-[MIT](LICENSE) © 2026 Sttrevens
+[MIT](LICENSE) © 2026 Sttrevens.
+
+The Stardeck sample uses [RobotExpressive](samples/assets/stardeck/ATTRIBUTION.md) by Tomás Laulhé (CC0) and "Space ship hallway" by yeeyeeman (CC BY 4.0). See [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES.md).

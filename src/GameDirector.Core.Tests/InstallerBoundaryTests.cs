@@ -2,12 +2,12 @@ using System.Text.Json;
 using GameDirector.Client;
 using Xunit;
 
-public sealed class InstallerBoundaryTests
+public sealed class InstallerBoundaryTests : TempPaths
 {
     [Fact]
     public void RemovingOwnedFileCannotFollowAReplacedDirectory()
     {
-        var root = Path.Combine(Path.GetTempPath(), "gd-install-boundary-" + Guid.NewGuid().ToString("N"));
+        var root = TempPath("gd-install-boundary-");
         var source = Path.Combine(root, "package");
         var project = Path.Combine(root, "project");
         var outside = Path.Combine(root, "outside");
@@ -18,6 +18,7 @@ public sealed class InstallerBoundaryTests
         Directory.CreateDirectory(outside);
         File.WriteAllText(Path.Combine(source, "package.json"), JsonSerializer.Serialize(new { name = "com.gamedirector.test", version = "1" }));
         File.WriteAllText(Path.Combine(source, "nested", "owned.txt"), "owned-v1");
+        GameDirector.Core.Tests.InstallerRuntimeFixture.Write(source, "1");
         try
         {
             UnityPackageInstaller.Install(source, project, true);
@@ -40,7 +41,7 @@ public sealed class InstallerBoundaryTests
     [Fact]
     public void SourceDirectoryLinksAreRejectedBeforeAnyProjectWrites()
     {
-        var root = Path.Combine(Path.GetTempPath(), "gd-source-boundary-" + Guid.NewGuid().ToString("N"));
+        var root = TempPath("gd-source-boundary-");
         var source = Path.Combine(root, "package");
         var project = Path.Combine(root, "project");
         var outside = Path.Combine(root, "outside");

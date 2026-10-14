@@ -1,0 +1,1 @@
+{"family":"..","entry":"look.ts","gameSha":"1111111111111111111111111111111111111111","three":"0.170.0","stage":{"query":"fixture=look"},"alias":{"src/device.ts":"shims/device.ts"},"define":{"import.meta.env.DEV":"false"},"forbid":["src/device.ts","src/forbidden.ts"],"options":{"side":1}}

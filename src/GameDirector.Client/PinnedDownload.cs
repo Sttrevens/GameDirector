@@ -27,24 +27,24 @@ public static class PinnedDownload
             using var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
             if (response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.MovedPermanently or HttpStatusCode.Found or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect)
             {
-                var location = response.Headers.Location ?? throw new InvalidOperationException("Redirect without a location.");
+                var location = response.Headers.Location ?? throw new MediaFailureException("Redirect without a location.");
                 var next = new Uri(uri, location);
                 if (hop >= MaxRedirects || (next.Scheme != "https" && !(next.Scheme == "http" && next.IsLoopback)))
-                    throw new InvalidOperationException("Redirect policy refused: hops are bounded and must stay on HTTPS.");
+                    throw new MediaFailureException("Redirect policy refused: hops are bounded and must stay on HTTPS.");
                 uri = next; continue;
             }
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException("Download failed with HTTP " + (int)response.StatusCode + ".");
+                throw new MediaFailureException("Download failed with HTTP " + (int)response.StatusCode + ".");
             if (response.Content.Headers.ContentLength > maxBytes)
-                throw new InvalidOperationException("Download exceeds the pinned size budget.");
+                throw new MediaFailureException("Download exceeds the pinned size budget.");
             payload = await response.Content.ReadAsByteArrayAsync(ct);
             if (payload.LongLength > maxBytes)
-                throw new InvalidOperationException("Download exceeds the pinned size budget.");
+                throw new MediaFailureException("Download exceeds the pinned size budget.");
             break;
         }
         var hash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         if (hash != expectedSha256)
-            throw new InvalidOperationException("Downloaded bytes differ from the pinned SHA-256; the artifact was not installed.");
+            throw new MediaFailureException("Downloaded bytes differ from the pinned SHA-256; the artifact was not installed.");
         var parent = Path.GetDirectoryName(Path.GetFullPath(destination))!;
         Directory.CreateDirectory(parent);
         var temp = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";

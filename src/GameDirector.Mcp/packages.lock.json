@@ -2,6 +2,15 @@
   "version": 1,
   "dependencies": {
     "net8.0": {
+      "Microsoft.Extensions.Caching.Abstractions": {
+        "type": "Direct",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "4ZFBNE+jzR+CrWWlhOesnmywCW7pYKT0dxyAQRdL11yJwxe4jvcAu31eorFtEkoFeCDcUTeNssgPv2yaRRptaQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.10"
+        }
+      },
       "Microsoft.Extensions.Hosting": {
         "type": "Direct",
         "requested": "[10.0.11, )",
@@ -49,14 +58,6 @@
         "contentHash": "K0B05oApxmviWalNHPMBBcRC7erKiDATz3ENNR/jqTR9JwIwLRefgDhj2jCRwL1aca99pXUe0qyQC73/xIuZig==",
         "dependencies": {
           "System.Text.Json": "10.0.10"
-        }
-      },
-      "Microsoft.Extensions.Caching.Abstractions": {
-        "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "4ZFBNE+jzR+CrWWlhOesnmywCW7pYKT0dxyAQRdL11yJwxe4jvcAu31eorFtEkoFeCDcUTeNssgPv2yaRRptaQ==",
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "10.0.10"
         }
       },
       "Microsoft.Extensions.Configuration": {
@@ -362,7 +363,7 @@
       "gamedirector.client": {
         "type": "Project",
         "dependencies": {
-          "GameDirector.Core": "[0.2.0-alpha.1, )"
+          "GameDirector.Core": "[0.1.0, )"
         }
       },
       "gamedirector.core": {
@@ -371,7 +372,7 @@
       "gamedirector.decisions": {
         "type": "Project",
         "dependencies": {
-          "GameDirector.Client": "[0.2.0-alpha.1, )"
+          "GameDirector.Client": "[0.1.0, )"
         }
       }
     }

@@ -23,6 +23,7 @@ public sealed class ServiceRig : IAsyncDisposable
     public CapabilityManifest Manifest = null!;
     public string ManifestHash = "";
     private WebApplication? bridge;
+    private readonly TempPaths temp = new();
 
     public static readonly DecisionProviderSettings Settings = new("http://127.0.0.1:9/decisions", "typesafe/jev-1.13", "key");
     /// <summary>Same endpoint with a rotated memory-only key: identical decision
@@ -30,31 +31,34 @@ public sealed class ServiceRig : IAsyncDisposable
     public static readonly DecisionProviderSettings SettingsRotatedKey = new("http://127.0.0.1:9/decisions", "typesafe/jev-1.13", "rotated-key");
     public static readonly DecisionProviderSettings SettingsOtherEndpoint = new("http://127.0.0.1:9/other-decisions", "typesafe/jev-1.13", "key");
 
-    public static async Task<ServiceRig> Start(IDecisionProvider? provider)
+    public static async Task<ServiceRig> Start(IDecisionProvider? provider, CancellationToken applicationStopping = default)
     {
         var rig = new ServiceRig();
-        rig.Root = Path.Combine(Path.GetTempPath(), "gd-test-" + Guid.NewGuid().ToString("N"));
-        rig.Source = Path.Combine(Path.GetTempPath(), "gd-src-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(rig.Root);
-        Directory.CreateDirectory(rig.Source);
-        rig.Manifest = TestRig.Manifest(rig.Source);
-        rig.ManifestHash = FilmCompiler.Hash(rig.Manifest);
+        try
+        {
+            rig.Root = rig.temp.TempPath("gd-test-");
+            rig.Source = rig.temp.TempPath("gd-src-");
+            Directory.CreateDirectory(rig.Root);
+            Directory.CreateDirectory(rig.Source);
+            rig.Manifest = TestRig.Manifest(rig.Source);
+            rig.ManifestHash = ManifestIdentity.Of(rig.Manifest);
 
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Logging.ClearProviders();
-        var app = builder.Build();
-        var manifest = rig.Manifest;
-        app.MapGet("/" + BridgeRoutes.Manifest, () => Results.Json(manifest, DslJson.Options));
-        await app.StartAsync();
-        rig.bridge = app;
-        var address = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().Features
-            .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()!.Addresses.Single();
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseUrls("http://127.0.0.1:0");
+            builder.Logging.ClearProviders();
+            var app = rig.bridge = builder.Build();
+            var manifest = rig.Manifest;
+            app.MapGet("/" + BridgeRoutes.Manifest, () => Results.Json(manifest, DslJson.Options));
+            await app.StartAsync();
+            var address = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().Features
+                .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()!.Addresses.Single();
 
-        rig.Studio = new Studio(rig.Root);
-        rig.Studio.Register(new StudioProject { Id = "proj", Name = "Test", Engine = "Unity", Endpoint = address });
-        rig.Decisions = new DecisionService(rig.Studio, _ => provider ?? throw new InvalidOperationException("no provider in test"));
-        return rig;
+            rig.Studio = new Studio(rig.Root);
+            rig.Studio.Register(new StudioProject { Id = "proj", Name = "Test", Engine = "Unity", Endpoint = address });
+            rig.Decisions = new DecisionService(rig.Studio, _ => provider ?? throw new InvalidOperationException("no provider in test"), applicationStopping);
+            return rig;
+        }
+        catch { await rig.DisposeAsync(); throw; }
     }
 
     public string CatalogDir() => Studio.StorePath("catalog", "proj");
@@ -104,8 +108,10 @@ public sealed class ServiceRig : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (bridge != null) await bridge.StopAsync();
-        Studio.Dispose();
-        try { Directory.Delete(Root, true); Directory.Delete(Source, true); } catch { /* best effort */ }
+        try
+        {
+            if (bridge != null) { try { await bridge.StopAsync(); } finally { await bridge.DisposeAsync(); } }
+        }
+        finally { try { Studio?.Dispose(); } finally { temp.Dispose(); } }
     }
 }

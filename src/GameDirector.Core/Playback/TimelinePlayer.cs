@@ -20,8 +20,8 @@ namespace GameDirector.Core.Playback
     }
 
     /// <summary>
-    /// Deterministic timeline executor. The caller owns time: every Tick(dt)
-    /// advances the playhead and fires all cues whose time has been reached,
+    /// Deterministic timeline executor. The caller owns time: AdvanceTo(t)
+    /// (or Tick(dt) for interactive playback) fires all cues reached,
     /// in compiled order. Same compiled timeline + same dt sequence =&gt; same
     /// event sequence. No wall-clock, no engine API, no threads.
     /// </summary>
@@ -81,13 +81,24 @@ namespace GameDirector.Core.Playback
         {
             if (State != PlayerState.Playing) return;
             if (dt < 0 || double.IsNaN(dt) || double.IsInfinity(dt)) return;
+            AdvanceTo(Math.Min(_timeline.Duration, _time + dt));
+        }
+
+        /// <summary>Advance to absolute timeline seconds, clamped to Duration.
+        /// Earlier and nonfinite targets are ignored, like invalid Tick deltas;
+        /// seeking requires a new performance. Paused/terminal players do not move.</summary>
+        public void AdvanceTo(double absoluteTime)
+        {
+            if (State != PlayerState.Playing || absoluteTime < _time || double.IsNaN(absoluteTime) || double.IsInfinity(absoluteTime)) return;
             try
             {
-                double target = Math.Min(_timeline.Duration, _time + dt);
-                while (_nextCue < _timeline.OrderedCues.Count && _timeline.OrderedCues[_nextCue].T <= target + 1e-9)
+                double target = Math.Min(_timeline.Duration, absoluteTime);
+                while (_nextCue < _timeline.OrderedCues.Count && _timeline.OrderedCues[_nextCue].T <= target + FrameClock.CueEpsilonSeconds)
                 {
                     double boundary = _timeline.OrderedCues[_nextCue].T;
-                    Advance(Math.Max(_time, boundary));
+                    // Epsilon-close future cues fire at the target, not beyond
+                    // it: frame time stays exact and presentation never rewinds.
+                    Advance(Math.Min(target, Math.Max(_time, boundary)));
                     DispatchDue();
                 }
                 Advance(target);
@@ -100,7 +111,8 @@ namespace GameDirector.Core.Playback
 
         private void Advance(double target)
         {
-            double delta = Math.Max(0, target - _time);
+            target = Math.Max(_time, target);
+            double delta = target - _time;
             _time = target;
             Session?.AdvancePresentation(delta, _time);
         }
@@ -123,7 +135,7 @@ namespace GameDirector.Core.Playback
         private void DispatchDue()
         {
             var cues = _timeline.OrderedCues;
-            while (_nextCue < cues.Count && cues[_nextCue].T <= _time + 1e-9)
+            while (_nextCue < cues.Count && cues[_nextCue].T <= _time + FrameClock.CueEpsilonSeconds)
             {
                 Dispatch(cues[_nextCue]);
                 _nextCue++;

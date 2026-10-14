@@ -1,0 +1,1399 @@
+{
+  "schema": "gamedirector.engine-contract",
+  "version": {
+    "major": 1,
+    "minor": 1
+  },
+  "capture": {
+    "minFrameRate": 1,
+    "maxFrameRate": 60,
+    "minDimension": 64,
+    "maxWidth": 3840,
+    "maxHeight": 2160,
+    "maxTakeSeconds": 600,
+    "idleLeaseSeconds": 60
+  },
+  "frameClock": {
+    "alignmentToleranceFrames": 1E-05,
+    "cueEpsilonSeconds": 1E-09
+  },
+  "camera": {
+    "currentAnchor": "current",
+    "lens": {
+      "defaultFov": 50,
+      "sensorSizeMm": 24,
+      "minFov": 5,
+      "maxFov": 170,
+      "resolution": "fov, else focalToFov(focalLengthMm), else defaultFov",
+      "focalToFov": {
+        "id": "vertical-2atan",
+        "expression": "fovDeg = degrees(2*atan(sensorSizeMm/(2*focalLengthMm))) (vertical)"
+      },
+      "samples": [
+        {
+          "focalLengthMm": 50,
+          "fov": 26.991467,
+          "tolerance": 0.001
+        },
+        {
+          "focalLengthMm": 35,
+          "fov": 37.84929,
+          "tolerance": 0.001
+        }
+      ],
+      "aspect": {
+        "id": "hor-plus",
+        "expression": "fov is vertical at every aspect; tan(hfov/2)=tan(fov/2)*width/height",
+        "samples": [
+          {
+            "pan": 5,
+            "tilt": 0,
+            "roll": 0,
+            "fov": 50,
+            "aspect": 0.5625,
+            "x": 0.33322662,
+            "y": 0.5,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          },
+          {
+            "pan": 5,
+            "tilt": 0,
+            "roll": 0,
+            "fov": 50,
+            "aspect": 1.7777778,
+            "x": 0.44723186,
+            "y": 0.5,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          },
+          {
+            "pan": 10,
+            "tilt": 0,
+            "roll": 0,
+            "fov": 50,
+            "aspect": 0.5625,
+            "x": 0.16388051,
+            "y": 0.5,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          },
+          {
+            "pan": 10,
+            "tilt": 0,
+            "roll": 0,
+            "fov": 50,
+            "aspect": 1.7777778,
+            "x": 0.3936497,
+            "y": 0.5,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          },
+          {
+            "pan": 20,
+            "tilt": 15,
+            "roll": 30,
+            "fov": 50,
+            "aspect": 0.5625,
+            "x": 0.1333328,
+            "y": 0.95083505,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          },
+          {
+            "pan": 20,
+            "tilt": 15,
+            "roll": 30,
+            "fov": 50,
+            "aspect": 1.7777778,
+            "x": 0.3839842,
+            "y": 0.95083505,
+            "tolerance": 0.0001,
+            "liveTolerance": 0.02
+          }
+        ]
+      }
+    },
+    "frames": [
+      {
+        "id": "extreme-closeup",
+        "coverage": 2.8
+      },
+      {
+        "id": "closeup",
+        "coverage": 1.5
+      },
+      {
+        "id": "medium",
+        "coverage": 1.05
+      },
+      {
+        "id": "full",
+        "coverage": 0.8
+      },
+      {
+        "id": "wide",
+        "coverage": 0.4
+      }
+    ],
+    "fallbackFrame": "wide",
+    "progress": {
+      "id": "clamp01-linear",
+      "expression": "p = durationSeconds \u003E 0 ? clamp01((t - shotStart) / durationSeconds) : 0; e = ease(p); the camera runs on the unscaled timeline clock (world.timescale scales the world only)"
+    },
+    "eases": [
+      {
+        "id": "linear",
+        "formula": "identity",
+        "expression": "p",
+        "samples": [
+          {
+            "p": 0,
+            "e": 0
+          },
+          {
+            "p": 0.25,
+            "e": 0.25
+          },
+          {
+            "p": 0.5,
+            "e": 0.5
+          },
+          {
+            "p": 0.75,
+            "e": 0.75
+          },
+          {
+            "p": 1,
+            "e": 1
+          }
+        ]
+      },
+      {
+        "id": "in",
+        "formula": "quad-in",
+        "expression": "p*p",
+        "samples": [
+          {
+            "p": 0,
+            "e": 0
+          },
+          {
+            "p": 0.25,
+            "e": 0.0625
+          },
+          {
+            "p": 0.5,
+            "e": 0.25
+          },
+          {
+            "p": 0.75,
+            "e": 0.5625
+          },
+          {
+            "p": 1,
+            "e": 1
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "formula": "quad-out",
+        "expression": "1-(1-p)*(1-p)",
+        "samples": [
+          {
+            "p": 0,
+            "e": 0
+          },
+          {
+            "p": 0.25,
+            "e": 0.4375
+          },
+          {
+            "p": 0.5,
+            "e": 0.75
+          },
+          {
+            "p": 0.75,
+            "e": 0.9375
+          },
+          {
+            "p": 1,
+            "e": 1
+          }
+        ]
+      },
+      {
+        "id": "inOut",
+        "formula": "smoothstep",
+        "expression": "p*p*(3-2*p)",
+        "samples": [
+          {
+            "p": 0,
+            "e": 0
+          },
+          {
+            "p": 0.25,
+            "e": 0.15625
+          },
+          {
+            "p": 0.5,
+            "e": 0.5
+          },
+          {
+            "p": 0.75,
+            "e": 0.84375
+          },
+          {
+            "p": 1,
+            "e": 1
+          }
+        ]
+      }
+    ],
+    "motions": [
+      {
+        "id": "hold",
+        "expression": "pos = from",
+        "meaning": "Hold the resolved start position, even with an authored to.",
+        "reads": [],
+        "samples": [
+          {
+            "ease": "inOut",
+            "p": 0.5,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "displacement",
+            "expected": 0,
+            "tolerance": 0
+          },
+          {
+            "ease": "linear",
+            "p": 1,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "displacement",
+            "expected": 0,
+            "tolerance": 0
+          }
+        ]
+      },
+      {
+        "id": "lerp",
+        "expression": "pos = lerp(from, to, e)",
+        "meaning": "Interpolate to the resolved authored destination (dolly and crane).",
+        "reads": [],
+        "samples": [
+          {
+            "ease": "linear",
+            "p": 0.25,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 0.25,
+            "tolerance": 0
+          },
+          {
+            "ease": "inOut",
+            "p": 0.25,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 0.15625,
+            "tolerance": 0
+          },
+          {
+            "ease": "in",
+            "p": 0.5,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 0.25,
+            "tolerance": 0
+          },
+          {
+            "ease": "out",
+            "p": 0.5,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 0.75,
+            "tolerance": 0
+          },
+          {
+            "ease": "inOut",
+            "p": 1,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 1,
+            "tolerance": 0
+          },
+          {
+            "ease": "inOut",
+            "p": 0.75,
+            "authoredTo": true,
+            "stepSubject": false,
+            "observable": "fraction",
+            "expected": 0.84375,
+            "tolerance": 0
+          }
+        ]
+      },
+      {
+        "id": "orbit-up",
+        "expression": "pos = target(t) \u002B rotateUp(from - target0, orbitDeg * e)",
+        "meaning": "Orbit about world up; \u002B carries the camera toward its own left (clockwise seen from above).",
+        "reads": [
+          "orbitDeg"
+        ],
+        "samples": [
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "params": {
+              "orbitDeg": 90
+            },
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "radius",
+            "expected": 4,
+            "tolerance": 0.0001
+          },
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "params": {
+              "orbitDeg": 90
+            },
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "swept-deg",
+            "expected": 45,
+            "tolerance": 0.001
+          },
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "params": {
+              "orbitDeg": 90
+            },
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "side",
+            "expected": -1,
+            "tolerance": 0
+          },
+          {
+            "ease": "inOut",
+            "p": 1,
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "swept-deg",
+            "expected": 90,
+            "tolerance": 0.001
+          },
+          {
+            "ease": "inOut",
+            "p": 1,
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "side",
+            "expected": -1,
+            "tolerance": 0
+          },
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "params": {
+              "orbitDeg": -60
+            },
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "swept-deg",
+            "expected": 30,
+            "tolerance": 0.001
+          },
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "params": {
+              "orbitDeg": -60
+            },
+            "authoredTo": false,
+            "stepSubject": false,
+            "observable": "side",
+            "expected": 1,
+            "tolerance": 0
+          }
+        ]
+      },
+      {
+        "id": "track-offset",
+        "expression": "pos = target(t) \u002B (from - target0)",
+        "meaning": "Follow the subject while preserving the start offset.",
+        "reads": [],
+        "samples": [
+          {
+            "ease": "linear",
+            "p": 0.5,
+            "authoredTo": false,
+            "stepSubject": true,
+            "observable": "drift",
+            "expected": 0,
+            "tolerance": 1E-05
+          }
+        ]
+      }
+    ],
+    "shots": [
+      {
+        "id": "lockoff",
+        "requiresTarget": false,
+        "motion": "hold"
+      },
+      {
+        "id": "dolly",
+        "requiresTarget": true,
+        "motion": "lerp"
+      },
+      {
+        "id": "crane",
+        "requiresTarget": true,
+        "motion": "lerp"
+      },
+      {
+        "id": "orbit",
+        "requiresTarget": false,
+        "motion": "orbit-up"
+      },
+      {
+        "id": "tracking",
+        "requiresTarget": false,
+        "motion": "track-offset"
+      }
+    ],
+    "params": [
+      {
+        "name": "targetHeight",
+        "unit": "m",
+        "meaning": "Authored aim height above the subject pivot: replaces the bounds-center offset with (0,targetHeight,0); omitted = full vector (subject bounds center - subject pivot) at shot start.",
+        "derivation": "subject-bounds-center"
+      },
+      {
+        "name": "coverage",
+        "unit": "subject-heights",
+        "meaning": "Auto-framing fill: subject height as a fraction of frame height (from:current only); defaults to the frame size\u0027s coverage.",
+        "derivation": "frame-coverage"
+      },
+      {
+        "name": "distance",
+        "default": 0,
+        "unit": "m",
+        "meaning": "Camera distance from the subject along the current view direction; 0 = derive from frame coverage."
+      },
+      {
+        "name": "offsetX",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved start position."
+      },
+      {
+        "name": "offsetY",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved start position."
+      },
+      {
+        "name": "offsetZ",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved start position."
+      },
+      {
+        "name": "toOffsetX",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved destination of a moving shot."
+      },
+      {
+        "name": "toOffsetY",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved destination of a moving shot."
+      },
+      {
+        "name": "toOffsetZ",
+        "default": 0,
+        "unit": "m",
+        "meaning": "World-axis offset added to the resolved destination of a moving shot."
+      },
+      {
+        "name": "orbitDeg",
+        "default": 90,
+        "unit": "deg",
+        "meaning": "Total orbit sweep across the shot duration; \u002B carries the camera toward its own left (clockwise seen from above)."
+      },
+      {
+        "name": "shake",
+        "default": 0,
+        "unit": "m",
+        "meaning": "Handheld vertical shake; amplitude ~value x 0.025 m; 0 = locked off."
+      },
+      {
+        "name": "tilt",
+        "default": 0,
+        "unit": "deg",
+        "meaning": "Pitch applied after aiming; \u002B looks down."
+      },
+      {
+        "name": "pan",
+        "default": 0,
+        "unit": "deg",
+        "meaning": "Yaw applied after aiming; \u002B turns right."
+      },
+      {
+        "name": "roll",
+        "default": 0,
+        "unit": "deg",
+        "meaning": "Roll around the view axis applied after aiming; applied after pan and tilt; \u002B turns screen content clockwise (pinned by camera.aim.samples)."
+      },
+      {
+        "name": "endFov",
+        "unit": "deg",
+        "meaning": "Fov at shot end; ramps from the start fov across the shot.",
+        "derivation": "start-fov"
+      }
+    ],
+    "derivations": {
+      "subject-bounds-center": "when targetHeight is omitted, aim offset = full vector (subject bounds center - subject pivot) at shot start, preserving X, Y and Z; when authored, aim offset = (0,targetHeight,0)",
+      "frame-coverage": "coverage = Coverage(frame) at shot start",
+      "start-fov": "endFov = start fov"
+    },
+    "aim": {
+      "order": "LookRotation(aim) * Euler(tilt, pan, roll): intrinsic yaw(pan), pitch(tilt), roll(roll); signs viewer-relative",
+      "samples": [
+        {
+          "pan": 0,
+          "tilt": 0,
+          "roll": 0,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.5,
+          "y": 0.5,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 20,
+          "tilt": 0,
+          "roll": 0,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.109732,
+          "y": 0.5,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": -20,
+          "tilt": 0,
+          "roll": 0,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.890268,
+          "y": 0.5,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 0,
+          "tilt": 15,
+          "roll": 0,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.5,
+          "y": 0.787309,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 20,
+          "tilt": 0,
+          "roll": 30,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.162018,
+          "y": 0.695134,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 20,
+          "tilt": 15,
+          "roll": 30,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.29375,
+          "y": 0.950835,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 0,
+          "tilt": -10,
+          "roll": 45,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.366309,
+          "y": 0.366309,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "pan": 0,
+          "tilt": 0,
+          "roll": 45,
+          "fov": 50,
+          "aspect": 1,
+          "x": 0.5,
+          "y": 0.5,
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        }
+      ]
+    },
+    "rig": {
+      "nearClip": 0.03,
+      "farClip": 1000,
+      "minSubjectHeight": 0.1,
+      "degenerateSqrMagnitude": 0.01,
+      "aimEpsilonSqrMagnitude": 1E-05,
+      "autoFrameFallback": {
+        "up": 0.25,
+        "back": 1
+      },
+      "distanceFallback": {
+        "up": 0.2,
+        "back": 1
+      },
+      "backAxis": "back is opposite the engine\u0027s forward: Unity -Z, Three \u002BZ",
+      "autoFrameDistance": {
+        "id": "height-over-coverage",
+        "expression": "from:current and distance \u003C= 0 only: max(minSubjectHeight, subjectHeight) / (2*tan(fov/2)*coverage) along (start - target), or autoFrameFallback when lengthSq \u003C degenerateSqrMagnitude"
+      },
+      "samples": [
+        {
+          "frame": "full",
+          "radius3D": 2.680634,
+          "tolerance": 0.001
+        },
+        {
+          "frame": "full",
+          "coverage": 1.5,
+          "radius3D": 1.429671,
+          "tolerance": 0.001
+        }
+      ]
+    },
+    "shake": {
+      "noise": "unity-perlin-2d",
+      "clock": "shot-elapsed-seconds",
+      "frequencyHz": 7.3,
+      "row": 0.5,
+      "center": 0.5,
+      "scale": 0.05,
+      "expression": "position \u002B= up * (((noise(elapsed*frequencyHz, row) - center) * scale) * shake)"
+    },
+    "scene": {
+      "subjectSize": [
+        1,
+        2,
+        1
+      ],
+      "subjectCenter": [
+        0,
+        1,
+        0
+      ],
+      "from": [
+        0,
+        1,
+        -4
+      ],
+      "to": [
+        4,
+        1,
+        -4
+      ],
+      "subjectStep": [
+        1,
+        0,
+        0
+      ],
+      "durationSeconds": 1,
+      "aspect": 1,
+      "targetHeightNote": "The centered base fixture makes omitted targetHeight equivalent to targetHeight=1 only because the bounds-center offset has zero X/Z. Also characterize an off-center subject: with pivot (0,0,0) and bounds center (1,1,0.5), omission keeps offset (1,1,0.5), while targetHeight=1 uses (0,1,0); these poses must differ.",
+      "observables": {
+        "fraction": "|pos-from|/|to-from|",
+        "displacement": "|pos-from|",
+        "radius": "horizontal |pos-target|",
+        "radius3d": "|pos-target|",
+        "swept-deg": "unsigned horizontal angle between (from-target0) and (pos-target)",
+        "side": "sign(dot(pos-pos0, cameraRight at p=0))",
+        "drift": "|(pos-target(t))-(from-target0)|"
+      }
+    }
+  },
+  "review": {
+    "intervalSeconds": 1,
+    "rule": "a rendered (not advance-only) timeline frame i is reviewed iff i % (fps*intervalSeconds) == 0, counted from timeline frame 0",
+    "required": [
+      "frame",
+      "time",
+      "composition.active",
+      "composition.subject",
+      "composition.center"
+    ],
+    "optional": [
+      "composition.shotType",
+      "composition.visibleSamples",
+      "composition.totalSamples",
+      "composition.note",
+      "composition.roles"
+    ],
+    "samples": [
+      {
+        "fps": 4,
+        "frameCount": 8,
+        "captureFromFrame": 0,
+        "reviewed": [
+          0,
+          4
+        ]
+      },
+      {
+        "fps": 4,
+        "frameCount": 8,
+        "captureFromFrame": 2,
+        "reviewed": [
+          4
+        ]
+      },
+      {
+        "fps": 1,
+        "frameCount": 2,
+        "captureFromFrame": 1,
+        "reviewed": [
+          1
+        ]
+      },
+      {
+        "fps": 6,
+        "frameCount": 12,
+        "captureFromFrame": 5,
+        "reviewed": [
+          6
+        ]
+      },
+      {
+        "fps": 24,
+        "frameCount": 49,
+        "captureFromFrame": 0,
+        "reviewed": [
+          0,
+          24,
+          48
+        ]
+      },
+      {
+        "fps": 24,
+        "frameCount": 48,
+        "captureFromFrame": 30,
+        "reviewed": []
+      }
+    ],
+    "roles": {
+      "fields": [
+        "role",
+        "kind",
+        "state",
+        "rect",
+        "crown",
+        "message"
+      ],
+      "kinds": [
+        "subject",
+        "with",
+        "lookAt"
+      ],
+      "states": [
+        "in-front",
+        "behind",
+        "absent",
+        "empty",
+        "straddles-near",
+        "error"
+      ],
+      "bounds": {
+        "id": "role-bounds-v1",
+        "expression": "union of world AABBs in the visible/active subtree; hidden nodes hide descendants; rigid Mesh local geometry bounds times world matrix; SkinnedMesh posed vertices via getVertexPosition; InstancedMesh per-instance matrices; BatchedMesh active visible instances with geometry ranges and matrices computed into locals; Sprite camera-facing world quad (world scale, centre, material rotation and size attenuation); Line and Points excluded; no renderable is empty; no engine boundingBox or boundingSphere cache writes; computation failures report error with message"
+      },
+      "rect": "unclamped viewport [x0,y0,x1,y1] of all 8 world-AABB corners; omitted unless every corner depth \u003E nearClip",
+      "crown": {
+        "id": "bounds-top-center",
+        "expression": "viewport [x,y,depth] of ((min.x\u002Bmax.x)/2,max.y,(min.z\u002Bmax.z)/2), a head proxy, not the maximum projected top corner"
+      },
+      "rule": "one entry for subject, each with role and a distinct lookAt; absent roles never require a live role binding; behind means all corners have depth \u003C= 0; straddles-near means not behind but at least one corner depth \u003C= nearClip (rect omitted); errors never fail a take; aim uses each engine\u0027s legacy bounds; reviews use role-bounds-v1",
+      "samples": [
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 0.5625,
+          "pan": 5,
+          "tilt": 0,
+          "roll": 0,
+          "state": "in-front",
+          "rect": [
+            0.055350894,
+            0.188579377,
+            0.604242109,
+            0.811420623
+          ],
+          "crown": [
+            0.333226627,
+            0.769087324,
+            3.984778792
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 1.777777778,
+          "pan": 5,
+          "tilt": 0,
+          "roll": 0,
+          "state": "in-front",
+          "rect": [
+            0.359310244,
+            0.188579377,
+            0.532982855,
+            0.811420623
+          ],
+          "crown": [
+            0.447231863,
+            0.769087324,
+            3.984778792
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 0.5625,
+          "pan": 10,
+          "tilt": 0,
+          "roll": 0,
+          "state": "in-front",
+          "rect": [
+            -0.124160158,
+            0.180877236,
+            0.437766481,
+            0.819122764
+          ],
+          "crown": [
+            0.163880506,
+            0.772198675,
+            3.939231012
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 1.777777778,
+          "pan": 10,
+          "tilt": 0,
+          "roll": 0,
+          "state": "in-front",
+          "rect": [
+            0.302511825,
+            0.180877236,
+            0.480308926,
+            0.819122764
+          ],
+          "crown": [
+            0.393649691,
+            0.772198675,
+            3.939231012
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 0.5625,
+          "pan": 20,
+          "tilt": 15,
+          "roll": 30,
+          "state": "in-front",
+          "rect": [
+            -0.38772994,
+            0.590112972,
+            0.686044413,
+            1.422675878
+          ],
+          "crown": [
+            0.378222451,
+            1.251451868,
+            3.37187444
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            2,
+            0.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 1.777777778,
+          "pan": 20,
+          "tilt": 15,
+          "roll": 30,
+          "state": "in-front",
+          "rect": [
+            0.219116699,
+            0.590112972,
+            0.558865615,
+            1.422675878
+          ],
+          "crown": [
+            0.461468823,
+            1.251451868,
+            3.37187444
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -8.5
+          ],
+          "max": [
+            0.5,
+            2,
+            -7.5
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 1,
+          "pan": 0,
+          "tilt": 0,
+          "roll": 0,
+          "state": "behind",
+          "crown": [
+            0.5,
+            0.231936635,
+            -4
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        },
+        {
+          "min": [
+            -0.5,
+            0,
+            -4.02
+          ],
+          "max": [
+            0.5,
+            2,
+            -3.9
+          ],
+          "from": [
+            0,
+            1,
+            -4
+          ],
+          "aim": [
+            0,
+            1,
+            0
+          ],
+          "fov": 50,
+          "aspect": 1,
+          "pan": 0,
+          "tilt": 0,
+          "roll": 0,
+          "state": "straddles-near",
+          "crown": [
+            0.5,
+            27.306336506,
+            0.04
+          ],
+          "tolerance": 0.0001,
+          "liveTolerance": 0.02
+        }
+      ]
+    }
+  },
+  "bridge": {
+    "loopbackHost": "127.0.0.1",
+    "loopbackAlias": "localhost",
+    "ports": {
+      "unity": 39777,
+      "three": 39778
+    },
+    "routes": {
+      "health": "health",
+      "manifest": "manifest",
+      "timelinePlay": "timeline/play",
+      "timelineStop": "timeline/stop",
+      "takeStart": "take/start",
+      "takeFrame": "take/frame",
+      "takeStop": "take/stop",
+      "take": "take",
+      "status": "status",
+      "capture": "capture",
+      "contract": "contract",
+      "stage": "stage"
+    },
+    "limits": {
+      "maxRequestBytes": 1048576,
+      "maxQueuedRequests": 32,
+      "mainThreadJobsPerUpdate": 4
+    },
+    "budgets": {
+      "engineWaitSeconds": 15,
+      "deliverySlackSeconds": 15,
+      "requestTimeoutSeconds": 30,
+      "compileSeconds": 30,
+      "pageLoadSeconds": 30,
+      "stageReadySeconds": 30,
+      "startSlackSeconds": 10,
+      "takeStartTimeoutSeconds": 100
+    },
+    "errors": {
+      "invalidRequest": {
+        "status": 400,
+        "code": "invalid_request"
+      },
+      "stateConflict": {
+        "status": 409,
+        "code": "state_conflict"
+      },
+      "busy": {
+        "status": 503,
+        "code": "busy"
+      },
+      "timeout": {
+        "status": 504,
+        "code": "timeout"
+      },
+      "internal": {
+        "status": 500,
+        "code": "internal"
+      },
+      "forbidden": {
+        "status": 403,
+        "code": "forbidden"
+      },
+      "notFound": {
+        "status": 404,
+        "code": "not_found"
+      },
+      "methodNotAllowed": {
+        "status": 405,
+        "code": "method_not_allowed"
+      },
+      "unsupportedMediaType": {
+        "status": 415,
+        "code": "unsupported_media_type"
+      },
+      "payloadTooLarge": {
+        "status": 413,
+        "code": "payload_too_large"
+      }
+    }
+  },
+  "take": {
+    "states": {
+      "capturing": "Capturing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "silentPictureAudio": "silent-picture; mix audio in the edit",
+    "requestDefaults": {
+      "captureFromFrame": 0,
+      "advanceOnly": false
+    }
+  },
+  "capabilities": [
+    {
+      "key": "actor.spawn",
+      "kind": "enum",
+      "values": [
+        {
+          "value": "supported",
+          "meaning": "actor.spawn cues execute"
+        },
+        {
+          "value": "unsupported",
+          "meaning": "every actor.spawn cue is refused at compile time, GD1012"
+        }
+      ],
+      "undeclared": "unrestricted",
+      "declarer": "adapter",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "Whether actor.spawn cues can execute on this stage.",
+      "rules": [
+        {
+          "when": "unsupported",
+          "effect": "forbid-cue",
+          "cueType": "actor.spawn",
+          "field": "type",
+          "remedy": "bind the role in the scene (presentAtStart) instead"
+        }
+      ]
+    },
+    {
+      "key": "actor.animation.fade",
+      "kind": "enum",
+      "values": [
+        {
+          "value": "crossfade",
+          "meaning": "fade \u003E 0 crossfades over fade seconds"
+        },
+        {
+          "value": "cut-only",
+          "meaning": "actor.anim with fade \u003E 0 is refused, GD1012"
+        }
+      ],
+      "undeclared": "unrestricted",
+      "declarer": "adapter",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "How actor.anim fades are performed.",
+      "rules": [
+        {
+          "when": "cut-only",
+          "effect": "require-zero",
+          "cueType": "actor.anim",
+          "field": "fade",
+          "remedy": "set fade: 0"
+        }
+      ]
+    },
+    {
+      "key": "camera.params",
+      "kind": "name-list",
+      "separator": ",",
+      "itemSyntax": "a letter, then letters, digits or \u0027_\u0027",
+      "undeclared": "builtin-table",
+      "declarer": "adapter-or-engine",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "Complete set of shot param names the engine implements; built-in names keep their contract meaning, other names belong to custom shot types.",
+      "rules": [
+        {
+          "effect": "restrict-shot-params",
+          "cueType": "camera.shot",
+          "field": "shot.params"
+        }
+      ]
+    },
+    {
+      "key": "director.mode",
+      "kind": "enum",
+      "values": [
+        {
+          "value": "offline-sandbox",
+          "meaning": "fully reversible, clocked presentation owned by the director"
+        }
+      ],
+      "undeclared": "absent",
+      "declarer": "adapter-or-engine",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "How the director may drive the game.",
+      "rules": []
+    },
+    {
+      "key": "project.sourceRoot",
+      "kind": "absolute-path",
+      "undeclared": "absent",
+      "declarer": "engine",
+      "identity": "volatile",
+      "exposure": "machine-local",
+      "description": "Absolute path of the connected game source; capture output must be written outside it.",
+      "rules": []
+    },
+    {
+      "key": "presentation.sourceFingerprint",
+      "kind": "token",
+      "undeclared": "absent",
+      "declarer": "engine",
+      "identity": "volatile",
+      "exposure": "machine-local",
+      "description": "Live visual/source identity; a take is valid only against it.",
+      "rules": []
+    },
+    {
+      "key": "engine",
+      "kind": "identifier",
+      "itemSyntax": "a letter, then letters, digits or \u0027_\u0027",
+      "undeclared": "absent",
+      "declarer": "engine",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "Engine family id stamped by the bridge (Three: three); informational.",
+      "rules": []
+    },
+    {
+      "key": "capture.audio",
+      "kind": "enum",
+      "values": [
+        {
+          "value": "post-production",
+          "meaning": "picture capture is silent; mix audio in the edit; see take.silentPictureAudio"
+        }
+      ],
+      "undeclared": "absent",
+      "declarer": "adapter-or-engine",
+      "identity": "vocabulary",
+      "exposure": "public",
+      "description": "Informational: TakeAdmission refuses audio cues regardless.",
+      "rules": []
+    }
+  ]
+}

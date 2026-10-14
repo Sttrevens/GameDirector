@@ -8,18 +8,23 @@ from pathlib import Path
 p = argparse.ArgumentParser()
 p.add_argument('timeline', type=Path)
 p.add_argument('--out', type=Path, required=True)
-p.add_argument('--endpoint', default='http://localhost:28819')
+# No default endpoint: Unity and Three bridges listen on different ports, and a
+# wrong default would silently compare against the wrong engine.
+p.add_argument('--endpoint', required=True)
+p.add_argument('--gd', type=Path, default=Path(__file__).resolve().parents[1] / 'src/GameDirector.Cli/bin/Debug/net8.0/gd.dll')
 p.add_argument('--fps', type=int, default=4)
 p.add_argument('--width', type=int, default=640)
 p.add_argument('--height', type=int, default=360)
 a = p.parse_args()
 root = a.out.resolve()
 root.mkdir(parents=True, exist_ok=False)
-cli = Path(__file__).resolve().parents[1] / 'src/GameDirector.Cli/bin/Debug/net8.0/gd.dll'
+cli = a.gd
+if not cli.is_file():
+    raise SystemExit(f'gd CLI not found at {cli}; build the Debug CLI or pass --gd <path to gd.dll>')
 for name in ('a', 'b'):
     subprocess.run(['dotnet', str(cli), 'take', str(a.timeline.resolve()), '--endpoint', a.endpoint, '--out',
                     str(root / name), '--fps', str(a.fps), '--width', str(a.width),
-                    '--height', str(a.height)], check=True)
+                    '--height', str(a.height), '--keep-frames'], check=True)
 
 left = sorted((root / 'a/frames').glob('*.png'))
 right = sorted((root / 'b/frames').glob('*.png'))

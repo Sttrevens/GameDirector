@@ -4,6 +4,7 @@ CaptureValidation harness in a disposable project, then pass its project/evidenc
 """
 import argparse, copy, hashlib, json, os, socket, subprocess, time, urllib.request, uuid
 from pathlib import Path
+from workbench_test_client import auth_headers, wait_service
 
 p=argparse.ArgumentParser();p.add_argument('--project',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 repo=Path(__file__).resolve().parents[1];project=Path(a.project).resolve();root=Path(a.out).resolve()
@@ -16,8 +17,9 @@ with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
 base=f'http://127.0.0.1:{port}/api/'
 env=dict(os.environ)
 log=open(root/'workbench.log','w');server=subprocess.Popen(['dotnet',str(repo/'src/GameDirector.Workbench/bin/Debug/net8.0/gamedirector-workbench.dll'),'--port',str(port),'--data',str(root/'store')],env=env,stdout=log,stderr=log)
+service=None
 def call(path,body=None):
- req=urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+ req=urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json',**auth_headers(service)})
  with urllib.request.urlopen(req,timeout=40) as r:return json.load(r)
 def produce(film):
  job=call('jobs',dict(projectId='unity',requestId=uuid.uuid4().hex,film=film))
@@ -28,9 +30,7 @@ def produce(film):
  assert job['state']=='Verified',job
  return job
 try:
- for _ in range(100):
-  try:call('state');break
-  except Exception:time.sleep(.2)
+ service=wait_service(root/'store/.service.json',server)
  call('projects',dict(id='unity',name='Unity isolated capture acceptance',engine='Unity',endpoint='http://127.0.0.1:39779',sourceRoot=str(project)))
  connected=call('projects/unity/connect',{});assert connected['manifest']['capabilities']['project.sourceRoot']==str(project)
  film=dict(version=1,title='Unity owned source validation',frameRate=12,width=320,height=180,scenes=[dict(id='stage',performance=[],shots=[dict(id='wide',start=0,end=1,purpose='Establish',camera=dict(type='lockoff',subject='lead',frame='full',**{'from':'wide'})),dict(id='close',start=1,end=2,purpose='Detail',camera=dict(type='lockoff',subject='lead',frame='closeup',**{'from':'close'}))])])

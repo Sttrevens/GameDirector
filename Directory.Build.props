@@ -1,8 +1,20 @@
 <Project>
   <PropertyGroup>
-    <Version>0.2.0-alpha.1</Version>
+    <Version>0.1.0</Version>
     <Deterministic>true</Deterministic>
     <PathMap>$(MSBuildThisFileDirectory)=/_/GameDirector/</PathMap>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- All published entrypoints resolve shared assemblies to one version. -->
+    <SharedExtensionsVersion>10.0.11</SharedExtensionsVersion>
+    <SharedCachingVersion>10.0.10</SharedCachingVersion>
+    <ModelContextProtocolVersion>2.2.0</ModelContextProtocolVersion>
   </PropertyGroup>
+  <!-- RID publishes use per-project scratch locks; committed dependency locks stay stable. -->
+  <PropertyGroup Condition="'$(GameDirectorPublishLockRoot)' != ''">
+    <NuGetLockFilePath>$(GameDirectorPublishLockRoot)/$(MSBuildProjectName).lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'GameDirector.Cli' Or '$(MSBuildProjectName)' == 'GameDirector.Mcp' Or '$(MSBuildProjectName)' == 'GameDirector.Workbench'">
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="$(SharedExtensionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="$(SharedCachingVersion)" />
+  </ItemGroup>
 </Project>

@@ -6,16 +6,16 @@ using Xunit;
 
 namespace GameDirector.Core.Tests;
 
-public class PinnedDownloadTests : IDisposable
+public class PinnedDownloadTests : TempPaths
 {
+    private readonly LoopbackHttp server;
     private readonly HttpListener listener;
     private readonly string prefix;
     private byte[] payload = Encoding.UTF8.GetBytes("pinned ffmpeg fixture");
     private int redirects;
     public PinnedDownloadTests()
     {
-        prefix = "http://127.0.0.1:" + FreePort() + "/";
-        listener = new HttpListener(); listener.Prefixes.Add(prefix); listener.Start();
+        server = LoopbackHttp.Start(); listener = server.Listener; prefix = server.Prefix;
         _ = Task.Run(async () =>
         {
             while (listener.IsListening)
@@ -28,13 +28,13 @@ public class PinnedDownloadTests : IDisposable
             }
         });
     }
-    private static int FreePort() { using var s = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0); s.Start(); return ((IPEndPoint)s.LocalEndpoint).Port; }
-    public void Dispose() { try { listener.Stop(); } catch { } }
+    // One Close() via the helper; Stop() first would make Close() re-bind the port.
+    public override void Dispose() { try { server.Dispose(); } finally { base.Dispose(); } }
     private string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
     [Fact] public async Task HappyPathWritesVerifiedBytes()
     {
-        var target = Path.Combine(Path.GetTempPath(), "gd-dl-" + Guid.NewGuid().ToString("N"));
+        var target = TempPath("gd-dl-");
         await PinnedDownload.Fetch(new Uri(prefix), Hash(payload), 1 << 20, target);
         Assert.Equal(payload, await File.ReadAllBytesAsync(target));
         File.Delete(target);
@@ -42,31 +42,34 @@ public class PinnedDownloadTests : IDisposable
 
     [Fact] public async Task HashMismatchRefusesAndLeavesNothing()
     {
-        var target = Path.Combine(Path.GetTempPath(), "gd-dl-" + Guid.NewGuid().ToString("N"));
+        var target = TempPath("gd-dl-");
         var wrong = new string('0', 64);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => PinnedDownload.Fetch(new Uri(prefix), wrong, 1 << 20, target));
+        var error = await Assert.ThrowsAsync<MediaFailureException>(() => PinnedDownload.Fetch(new Uri(prefix), wrong, 1 << 20, target));
+        Assert.Equal("Downloaded bytes differ from the pinned SHA-256; the artifact was not installed.", error.Message);
         Assert.False(File.Exists(target));
     }
 
     [Fact] public async Task UnpinnedAndPlainRemoteHttpAreRefused()
     {
-        var target = Path.Combine(Path.GetTempPath(), "gd-dl-" + Guid.NewGuid().ToString("N"));
+        var target = TempPath("gd-dl-");
         await Assert.ThrowsAsync<ArgumentException>(() => PinnedDownload.Fetch(new Uri(prefix), "", 1 << 20, target));
         await Assert.ThrowsAsync<ArgumentException>(() => PinnedDownload.Fetch(new Uri("http://example.com/x"), Hash(payload), 1 << 20, target));
     }
 
     [Fact] public async Task SizeBudgetIsEnforced()
     {
-        var target = Path.Combine(Path.GetTempPath(), "gd-dl-" + Guid.NewGuid().ToString("N"));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => PinnedDownload.Fetch(new Uri(prefix), Hash(payload), 4, target));
+        var target = TempPath("gd-dl-");
+        var error = await Assert.ThrowsAsync<MediaFailureException>(() => PinnedDownload.Fetch(new Uri(prefix), Hash(payload), 4, target));
+        Assert.Equal("Download exceeds the pinned size budget.", error.Message);
         Assert.False(File.Exists(target));
     }
 
     [Fact] public async Task RedirectStormRefuses()
     {
         redirects = 10;
-        var target = Path.Combine(Path.GetTempPath(), "gd-dl-" + Guid.NewGuid().ToString("N"));
+        var target = TempPath("gd-dl-");
         // Loopback-to-loopback redirects never cross hosts; only the hop budget stops a storm.
-        await Assert.ThrowsAsync<InvalidOperationException>(() => PinnedDownload.Fetch(new Uri(prefix), Hash(payload), 1 << 20, target));
+        var error = await Assert.ThrowsAsync<MediaFailureException>(() => PinnedDownload.Fetch(new Uri(prefix), Hash(payload), 1 << 20, target));
+        Assert.Equal("Redirect policy refused: hops are bounded and must stay on HTTPS.", error.Message);
     }
 }

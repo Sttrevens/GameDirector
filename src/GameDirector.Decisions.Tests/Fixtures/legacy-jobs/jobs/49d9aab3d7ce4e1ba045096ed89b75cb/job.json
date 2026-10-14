@@ -1,0 +1,165 @@
+{
+  "id": "49d9aab3d7ce4e1ba045096ed89b75cb",
+  "request": {
+    "requestId": "legacy-queued",
+    "projectId": "proj",
+    "film": {
+      "version": 1,
+      "title": "TestGame \u00B7 First scene",
+      "frameRate": 24,
+      "width": 1280,
+      "height": 720,
+      "scenes": [
+        {
+          "id": "scene-01",
+          "performance": [],
+          "shots": [
+            {
+              "id": "shot-01",
+              "start": 0,
+              "end": 3,
+              "purpose": "Establish the character and space",
+              "camera": {
+                "type": "lockoff",
+                "subject": "hero",
+                "frame": "full",
+                "from": "loc_gate",
+                "durationSeconds": 0,
+                "ease": "inOut"
+              }
+            }
+          ]
+        }
+      ],
+      "audio": [],
+      "subtitles": []
+    }
+  },
+  "endpoint": "http://127.0.0.1:59316",
+  "manifest": {
+    "game": "TestGame",
+    "gameVersion": "0",
+    "manifestVersion": "0.1",
+    "roles": [
+      {
+        "id": "hero",
+        "kind": "player",
+        "defaultActor": "streamer",
+        "presentAtStart": true
+      },
+      {
+        "id": "sentinel",
+        "kind": "monster",
+        "defaultActor": "sentinel",
+        "presentAtStart": false
+      }
+    ],
+    "actors": [
+      {
+        "id": "streamer",
+        "clips": [
+          "Idle",
+          "Walk",
+          "Cheer",
+          "Take01",
+          "Take02",
+          "Take03",
+          "Take04",
+          "Take05",
+          "Take06",
+          "Take07",
+          "Take08",
+          "Take09",
+          "Take10",
+          "Take11",
+          "Take12",
+          "Take13",
+          "Take14",
+          "Take15",
+          "Take16",
+          "Take17",
+          "Take18",
+          "Take19",
+          "Take20",
+          "Take21",
+          "Take22",
+          "Take23",
+          "Take24",
+          "Take25"
+        ],
+        "tags": []
+      },
+      {
+        "id": "sentinel",
+        "clips": [
+          "Idle",
+          "RageExpose"
+        ],
+        "tags": []
+      }
+    ],
+    "locations": [
+      {
+        "id": "loc_gate",
+        "space": "test",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "headingDeg": 0
+      },
+      {
+        "id": "loc_stage",
+        "space": "test",
+        "position": [
+          10,
+          0,
+          0
+        ],
+        "headingDeg": 0
+      },
+      {
+        "id": "cam_north",
+        "space": "test",
+        "position": [
+          0,
+          3,
+          -8
+        ],
+        "headingDeg": 0
+      }
+    ],
+    "audio": [
+      {
+        "id": "bgm_dark",
+        "kind": "bgm"
+      }
+    ],
+    "shotTypes": [
+      "lockoff",
+      "dolly",
+      "orbit",
+      "tracking",
+      "crane"
+    ],
+    "frameTypes": [
+      "extreme-closeup",
+      "closeup",
+      "medium",
+      "full",
+      "wide"
+    ],
+    "capabilities": {
+      "director.mode": "offline-sandbox",
+      "presentation.sourceFingerprint": "test-fingerprint",
+      "project.sourceRoot": "/var/tmp/gamedirector-legacy-fixture-source"
+    }
+  },
+  "state": "Queued",
+  "progress": "",
+  "completedShots": 0,
+  "reusedShots": 0,
+  "totalShots": 1,
+  "createdAt": "2026-10-06T03:53:04.5327+00:00"
+}

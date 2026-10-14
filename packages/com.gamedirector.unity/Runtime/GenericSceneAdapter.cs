@@ -8,7 +8,7 @@ namespace GameDirector.Unity
     /// Default adapter for quick bring-up in any Unity scene: resolves roles via
     /// DirectorRoleBinding markers, spawns from an inspector-assigned prefab map,
     /// plays audio from an inspector-assigned clip map. Games outgrow it by
-    /// subclassing GameDirectorAdapterBase (see adapters/cdrebirth).
+    /// subclassing GameDirectorAdapterBase (see docs/architecture.md#Adapters).
     /// </summary>
     public sealed class GenericSceneAdapter : GameDirectorAdapterBase
     {

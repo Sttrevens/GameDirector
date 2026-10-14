@@ -15,14 +15,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\TestSupport\TempPaths.cs" Link="TempPaths.cs" />
+    <Compile Include="..\TestSupport\LoopbackHttp.cs" Link="LoopbackHttp.cs" />
+    <Compile Include="..\TestSupport\TestBudget.cs" Link="TestBudget.cs" />
     <ProjectReference Include="..\GameDirector.Core\GameDirector.Core.csproj" />
     <ProjectReference Include="..\GameDirector.Client\GameDirector.Client.csproj" />
+    <ProjectReference Include="..\TestSupport\RuntimeLauncherProbe\RuntimeLauncherProbe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Repo-level sample assets are part of the contract: they must always compile. -->
   <ItemGroup>
-    <Content Include="..\..\samples\timelines\pv_grimforest_demo.json" Link="Samples\pv_grimforest_demo.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\adapters\cdrebirth\manifests\cdrebirth.manifest.json" Link="Samples\cdrebirth.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\samples\timelines\stardeck\v1.json" Link="Samples\stardeck.v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\adapters\stardeck\manifest.json" Link="Samples\stardeck.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\adapters\sandring\manifest.json" Link="Samples\sandring.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\samples\timelines\sandring\timeline.json" Link="Samples\sandring.timeline.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\samples\timelines\sandring\scout.json" Link="Samples\sandring.scout.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,9 @@ public static class DirectorProduct {
         using var stream=typeof(DirectorProduct).Assembly.GetManifestResourceStream("GameDirector.DirectingGuide")!;
         return new StreamReader(stream).ReadToEnd();
     }
+    /// <summary>The one DSL quick reference, generated from Core. CLI `gd grammar`
+    /// and the MCP grammar tool both print this verbatim.</summary>
+    public static string Grammar() => DirectorGrammar.Build();
     public static async Task<object> Doctor(string? endpoint=null,CancellationToken ct=default) {
         var checks=new List<object>();bool ok=true;
         var tools=MediaTools.Resolutions().Select(tool => new { name=tool.Name, path=tool.Path, source=tool.Source }).ToArray();

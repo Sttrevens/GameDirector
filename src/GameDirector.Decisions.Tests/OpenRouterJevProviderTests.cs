@@ -73,8 +73,8 @@ public class OpenRouterJevProviderTests
     [Fact]
     public async Task TimeoutIsBounded()
     {
-        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); });
-        var provider = new OpenRouterJevProvider(Settings, handler, TimeSpan.FromMilliseconds(100));
+        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); }); // timing-under-test: the provider must never answer, so only its own budget can end the call
+        var provider = new OpenRouterJevProvider(Settings, handler, TimeSpan.FromMilliseconds(100)); // timing-under-test: the 100 ms provider budget is the subject
         var ex = await Assert.ThrowsAsync<DecisionProviderException>(() => provider.Decide(TestRig.SampleRequest(), CancellationToken.None));
         Assert.Contains("did not answer", ex.Message);
     }
@@ -82,8 +82,8 @@ public class OpenRouterJevProviderTests
     [Fact]
     public async Task CallerCancellationPropagates()
     {
-        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); });
-        var provider = new OpenRouterJevProvider(Settings, handler, TimeSpan.FromSeconds(30));
+        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); }); // timing-under-test: the provider must never answer, so the caller's token is the only way out
+        var provider = new OpenRouterJevProvider(Settings, handler, TimeSpan.FromSeconds(30)); // timing-under-test: 30 s must NOT fire; the caller's 100 ms token must
         using var cts = new CancellationTokenSource(100);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => provider.Decide(TestRig.SampleRequest(), cts.Token));
     }

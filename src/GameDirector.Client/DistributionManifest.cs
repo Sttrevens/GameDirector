@@ -22,6 +22,7 @@ public sealed class DistributionManifest
     public int SchemaVersion { get; init; }
     public string Product { get; init; } = "";
     public int ProtocolVersion { get; init; }
+    public string RuntimeFolder { get; init; } = "";
     public string[] SupportedPlatforms { get; init; } = Array.Empty<string>();
     public Dictionary<string, PlatformLayout> Platforms { get; init; } = new();
     public Dictionary<string, AppLayout> Apps { get; init; } = new();
@@ -37,14 +38,13 @@ public sealed class DistributionManifest
 
     public sealed class AppLayout
     {
-        public string Folder { get; init; } = "";
         public string Executable { get; init; } = "";
     }
 
     public sealed class UnityLayout
     {
         public string PackageName { get; init; } = "com.gamedirector.unity";
-        public string BundledRuntimeFolder { get; init; } = "Tools~/Workbench";
+        public string BundledRuntimeParent { get; init; } = "";
         public string DistributionFolder { get; init; } = "unity/com.gamedirector.unity";
     }
 
@@ -92,6 +92,10 @@ public sealed class DistributionManifest
             throw new InvalidDataException($"unexpected distribution product '{manifest.Product}'");
         if (manifest.SupportedPlatforms.Length == 0 || manifest.Apps.Count == 0)
             throw new InvalidDataException("distribution manifest declares no platforms or apps");
+        RuntimeManifest.ValidateDeclaredPath(manifest.RuntimeFolder);
+        RuntimeManifest.ValidateDeclaredPath(manifest.Unity.BundledRuntimeParent);
+        foreach (var app in manifest.Apps.Values)
+            RuntimeManifest.ValidateDeclaredPath(app.Executable);
         foreach (var rid in manifest.SupportedPlatforms)
             if (!manifest.Platforms.ContainsKey(rid))
                 throw new InvalidDataException($"supported platform '{rid}' has no layout entry");
@@ -134,16 +138,18 @@ public sealed class DistributionManifest
     {
         if (!Apps.TryGetValue(appKey, out var app))
             throw new InvalidOperationException($"distribution manifest has no app '{appKey}'");
-        return Path.Combine(distributionRoot, app.Folder, app.Executable + ExecutableExtensionFor(rid));
+        return Path.Combine(distributionRoot, RuntimeFolder, app.Executable + ExecutableExtensionFor(rid));
     }
 
     /// <summary>The Unity package source shipped with a full distribution.</summary>
     public string UnityPackageSource(string distributionRoot) =>
         Path.Combine(distributionRoot, Unity.DistributionFolder);
+
+    public string UnityRuntimeFolder => Path.Combine(Unity.BundledRuntimeParent, RuntimeFolder);
 }
 
-/// <summary>The per-app runtime manifest (gamedirector.runtime.json) stamped
-/// into every published app folder and into the Unity bundle's Tools~ runtime.
+/// <summary>The shared runtime manifest (gamedirector.runtime.json) stamped
+/// into bin/ and into the Unity bundle's identical Tools~ runtime.
 /// The Unity launcher validates platform/protocol compatibility from it.</summary>
 public sealed class RuntimeManifest
 {
@@ -152,6 +158,7 @@ public sealed class RuntimeManifest
     public string Rid { get; init; } = "";
     public int ProtocolVersion { get; init; }
     public string App { get; init; } = "";
+    public Dictionary<string, string> Apps { get; init; } = new();
     public string UnityPackageVersion { get; init; } = "";
     public string[] Executables { get; init; } = Array.Empty<string>();
     public Dictionary<string, string> Sha256 { get; init; } = new();
@@ -162,14 +169,14 @@ public sealed class RuntimeManifest
     /// </summary>
     public void ValidateDeclaredPaths()
     {
-        foreach (var relative in Sha256.Keys.Concat(Executables))
+        foreach (var relative in Sha256.Keys.Concat(Executables).Concat(Apps.Values))
             ValidateDeclaredPath(relative);
     }
 
     internal static void ValidateDeclaredPath(string relative)
     {
         if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) ||
-            relative.Replace('\\', '/').Split('/').Any(segment => segment is ".." or ""))
+            relative.Contains(':') || relative.Replace('\\', '/').Split('/').Any(segment => segment is ".." or "." or ""))
             throw new InvalidDataException($"runtime manifest declares an unsafe path: '{relative}'");
     }
 
@@ -177,10 +184,14 @@ public sealed class RuntimeManifest
     /// not declared or matches its pinned hash; otherwise the failure reason.</summary>
     public string? IntegrityFailure(string root, string relative)
     {
+        root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         ValidateDeclaredPath(relative);
         if (!Sha256.TryGetValue(relative, out var expected)) return null;
-        var full = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+        var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
         if (!File.Exists(full)) return "declared file is missing: " + relative;
+        for (var path = full; path != Path.GetFullPath(root); path = Path.GetDirectoryName(path)!)
+            if (IsLink(path))
+                return "declared path is a link: " + relative;
         string actual;
         using (var stream = File.OpenRead(full))
             actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).ToLowerInvariant();
@@ -192,9 +203,31 @@ public sealed class RuntimeManifest
     /// gates should verify single files instead of the full tree.</summary>
     public string? IntegrityFailure(string root)
     {
+        root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        ValidateDeclaredPaths();
+        if (IsLink(root)) return "runtime root is a link";
         foreach (var relative in Sha256.Keys)
             if (IntegrityFailure(root, relative) is { } failure) return failure;
+        var pending = new Stack<string>(); pending.Push(root);
+        while (pending.Count > 0)
+            foreach (var path in Directory.EnumerateFileSystemEntries(pending.Pop()))
+            {
+                var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
+                var attributes = File.GetAttributes(path);
+                if (IsLink(path)) return "runtime path is a link: " + relative;
+                if ((attributes & FileAttributes.Directory) != 0) { pending.Push(path); continue; }
+                if (relative != DistributionManifest.RuntimeManifestFileName &&
+                    relative != Core.Dsl.GameDirectorPaths.RuntimeMirrorMarkerFile &&
+                    !Core.Dsl.RuntimeFilePolicy.IsOsMetadata(Path.GetFileName(path)) && !Sha256.ContainsKey(relative))
+                    return "runtime file is not declared: " + relative;
+            }
         return null;
+    }
+
+    internal static bool IsLink(string path)
+    {
+        FileSystemInfo entry = Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path);
+        return entry.LinkTarget != null; // .NET 8 distinguishes links from cloud reparse points.
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()

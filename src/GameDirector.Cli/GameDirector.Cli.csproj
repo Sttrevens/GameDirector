@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameDirector.Client\GameDirector.Client.csproj" />
+    <ProjectReference Include="..\GameDirector.Godot\GameDirector.Godot.csproj" />
   </ItemGroup>
 
 </Project>

@@ -37,6 +37,11 @@ public static class MediaFormats
     public static IReadOnlyList<AudioFormat> Audio => Table;
     public static IReadOnlyList<string> AudioExtensions => Table.Select(f => f.Extension).ToArray();
 
+    /// <summary>One source-window bound for import validation and decoded audio
+    /// editing. FrameClock supplies the same boundary noise at the film rate.</summary>
+    public static bool AudioWindowFitsSource(double start,double duration,double sourceDuration,int fps) =>
+        start+duration<=sourceDuration+FrameClock.AlignmentToleranceFrames*FrameClock.TimeOf(1,fps);
+
     public static AudioFormat? FindAudio(string fileNameOrExtension)
     {
         var extension = Path.GetExtension(fileNameOrExtension ?? "").ToLowerInvariant();

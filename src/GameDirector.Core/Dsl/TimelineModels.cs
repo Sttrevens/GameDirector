@@ -53,6 +53,8 @@ namespace GameDirector.Core.Dsl
 
         // Camera payload
         public ShotSpec Shot { get; set; }
+        /// <summary>Camera-only [min,max) width/height alternate; resolved before playback.</summary>
+        public AspectRange Aspect { get; set; }
 
         // Audio payloads
         public string AudioId { get; set; }
@@ -69,6 +71,7 @@ namespace GameDirector.Core.Dsl
         {
             var copy = (Cue)MemberwiseClone();
             copy.Shot = Shot?.Snapshot();
+            copy.Aspect = Aspect?.Snapshot();
             return copy;
         }
 
@@ -79,6 +82,13 @@ namespace GameDirector.Core.Dsl
         public bool Injected { get; set; }
     }
 
+    public sealed class AspectRange
+    {
+        public double? Min { get; set; }
+        public double? Max { get; set; }
+        public AspectRange Snapshot() => (AspectRange)MemberwiseClone();
+    }
+
     /// <summary>
     /// Camera shot description. Positions are expressed via manifest location ids
     /// (or the reserved keyword "current"), subjects via role ids. The adapter
@@ -87,16 +97,19 @@ namespace GameDirector.Core.Dsl
     public sealed class ShotSpec
     {
         /// <summary>lockoff | dolly | orbit | tracking | crane — must exist in manifest ShotTypes.</summary>
-        public string Type { get; set; } = "lockoff";
+        public string Type { get; set; } = ShotVocabulary.OmittedShotId;
 
         /// <summary>Role the shot frames (and looks at, unless LookAt overrides).</summary>
         public string Subject { get; set; }
 
+        /// <summary>Review-only protected roles; each must be present sometime in the shot window.</summary>
+        public List<string> With { get; set; }
+
         /// <summary>extreme-closeup | closeup | medium | full | wide — must exist in manifest FrameTypes.</summary>
-        public string Frame { get; set; } = "medium";
+        public string Frame { get; set; } = ShotVocabulary.OmittedFrameId;
 
         /// <summary>Start location id, or "current".</summary>
-        public string From { get; set; } = "current";
+        public string From { get; set; } = ShotVocabulary.CurrentAnchor;
 
         /// <summary>End location id for moving shots (dolly/crane), or "current".</summary>
         public string To { get; set; }
@@ -108,6 +121,7 @@ namespace GameDirector.Core.Dsl
         {
             var copy = (ShotSpec)MemberwiseClone();
             copy.Params = Params == null ? null : new Dictionary<string, float>(Params);
+            copy.With = With == null ? null : new List<string>(With);
             return copy;
         }
 
@@ -115,7 +129,7 @@ namespace GameDirector.Core.Dsl
         public float? FocalLengthMm { get; set; }
 
         /// <summary>linear | in | out | inOut</summary>
-        public string Ease { get; set; } = "inOut";
+        public string Ease { get; set; } = ShotVocabulary.OmittedEase;
 
         /// <summary>Optional different look-at role.</summary>
         public string LookAt { get; set; }

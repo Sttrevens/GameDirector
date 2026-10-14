@@ -122,13 +122,13 @@ public static class CameraChoiceTask
     public static IReadOnlyList<CameraCandidate> Suggest(CapabilityManifest manifest, FilmShot shot)
     {
         var subject = shot.Camera?.Subject ?? manifest.Roles.FirstOrDefault(r => r.PresentAtStart)?.Id ?? manifest.Roles.FirstOrDefault()?.Id;
-        var from = string.IsNullOrWhiteSpace(shot.Camera?.From) ? "current" : shot.Camera.From;
+        var from = string.IsNullOrWhiteSpace(shot.Camera?.From) ? ShotVocabulary.CurrentAnchor : shot.Camera.From;
         var results = new List<CameraCandidate>();
         var seen = new HashSet<string>();
         void Add(ShotSpec spec)
         {
             if (results.Count >= MaxCandidates) return;
-            var id = spec.Type + "-" + spec.Frame + "-" + spec.From + (spec.To != null && spec.To != "current" ? "-" + spec.To : "");
+            var id = spec.Type + "-" + spec.Frame + "-" + spec.From + (spec.To != null && spec.To != ShotVocabulary.CurrentAnchor ? "-" + spec.To : "");
             if (!seen.Add(id)) return;
             results.Add(new CameraCandidate { Id = id, Camera = spec });
         }
@@ -151,10 +151,10 @@ public static class CameraChoiceTask
     {
         var c = candidate.Camera;
         var parts = new List<string> { "shot type " + c.Type, "framing " + c.Frame, "subject " + c.Subject };
-        parts.Add("starts from " + (c.From == "current" ? "the current framing anchor" : "anchor " + c.From));
-        if (!string.IsNullOrWhiteSpace(c.To) && c.To != "current") parts.Add("moves to anchor " + c.To);
+        parts.Add("starts from " + (c.From == ShotVocabulary.CurrentAnchor ? "the current framing anchor" : "anchor " + c.From));
+        if (!string.IsNullOrWhiteSpace(c.To) && c.To != ShotVocabulary.CurrentAnchor) parts.Add("moves to anchor " + c.To);
         if (c.LookAt != null) parts.Add("looks at " + c.LookAt);
-        if (c.Ease != null && c.Ease != "inOut") parts.Add("easing " + c.Ease);
+        if (c.Ease != null && c.Ease != ShotVocabulary.OmittedEase) parts.Add("easing " + c.Ease);
         if (c.Fov is float fov) parts.Add("fov " + fov.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
         return string.Join(", ", parts) + ".";
     }

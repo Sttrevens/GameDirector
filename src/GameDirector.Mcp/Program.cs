@@ -20,10 +20,7 @@ public static class Program
         // MCP stdio servers must keep stdout clean for the protocol stream.
         builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
 
-        builder.Services
-            .AddMcpServer()
-            .WithStdioServerTransport()
-            .WithToolsFromAssembly();
+        McpServerHost.Configure(builder.Services.AddMcpServer().WithStdioServerTransport());
 
         await builder.Build().RunAsync();
     }

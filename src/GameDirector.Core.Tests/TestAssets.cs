@@ -13,12 +13,12 @@ internal static class TestAssets
         Roles = new List<RoleDescriptor>
         {
             new RoleDescriptor { Id = "hero", Kind = "player", DefaultActor = "streamer", PresentAtStart = true },
-            new RoleDescriptor { Id = "bigguai", Kind = "monster", DefaultActor = "bigguai", PresentAtStart = false },
+            new RoleDescriptor { Id = "sentinel", Kind = "monster", DefaultActor = "sentinel", PresentAtStart = false },
         },
         Actors = new List<ActorDescriptor>
         {
             new ActorDescriptor { Id = "streamer", Clips = new List<string> { "Idle", "Walk", "Cheer" } },
-            new ActorDescriptor { Id = "bigguai", Clips = new List<string> { "Idle", "RageExpose", "Tornado", "ConfidencePose" } },
+            new ActorDescriptor { Id = "sentinel", Clips = new List<string> { "Idle", "RageExpose", "Tornado", "ConfidencePose" } },
         },
         Locations = new List<LocationDescriptor>
         {
@@ -32,6 +32,20 @@ internal static class TestAssets
             new AudioDescriptor { Id = "sfx_roar", Kind = "sfx" },
         }
     };
+
+    public static CapabilityManifest InvalidManifest(string kind)
+    {
+        var manifest = Manifest();
+        switch (kind)
+        {
+            case "version": manifest.ManifestVersion = "0.2"; break;
+            case "duplicate": manifest.Roles.Add(manifest.Roles[0]); break;
+            case "capability": manifest.Capabilities[CapabilityKeys.AnimationFade] = "wrong"; break;
+            case "null-params": manifest.Capabilities[CapabilityKeys.CameraParams] = null!; break;
+            default: throw new ArgumentOutOfRangeException(nameof(kind));
+        }
+        return manifest;
+    }
 
     public static Cue Shot(double t, string subject = "hero", string type = "lockoff", string frame = "medium",
         string from = "cam_north", double duration = 3) => new Cue
@@ -49,9 +63,9 @@ internal static class TestAssets
         {
             Shot(0),
             new Cue { T = 0.5, Type = CueTypes.ActorAnim, Role = "hero", Clip = "Idle" },
-            new Cue { T = 2.0, Type = CueTypes.ActorSpawn, Role = "bigguai", Location = "loc_gate", HeadingTo = "hero" },
-            new Cue { T = 2.5, Type = CueTypes.ActorAnim, Role = "bigguai", Clip = "RageExpose" },
-            new Cue { T = 3.0, Type = CueTypes.ActorMove, Role = "bigguai", To = "loc_stage", Speed = 2.5f },
+            new Cue { T = 2.0, Type = CueTypes.ActorSpawn, Role = "sentinel", Location = "loc_gate", HeadingTo = "hero" },
+            new Cue { T = 2.5, Type = CueTypes.ActorAnim, Role = "sentinel", Clip = "RageExpose" },
+            new Cue { T = 3.0, Type = CueTypes.ActorMove, Role = "sentinel", To = "loc_stage", Speed = 2.5f },
             new Cue { T = 4.0, Type = CueTypes.WorldTimeScale, Scale = 0.3f, Duration = 1.0 },
             new Cue { T = 5.0, Type = CueTypes.AudioPlay, AudioId = "bgm_dark", Volume = 0.6f },
             new Cue { T = 6.0, Type = CueTypes.Marker, Label = "beat" },

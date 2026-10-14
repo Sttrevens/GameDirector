@@ -1,0 +1,265 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/RobotExpressive.glb" id="robot"]
+
+[ext_resource type="PackedScene" path="res://assets/space_ship_hallway.glb" id="hall"]
+
+[sub_resource type="Animation" id="expr_Angry"]
+length = 3.3333333
+loop_mode = 1
+tracks/0/type = "blend_shape"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Model/RootNode/RobotArmature/Skeleton3D/Head_2/Head:Angry")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 1)
+metadata/gamedirector_base_clip = "Idle"
+
+[sub_resource type="Animation" id="expr_Sad"]
+length = 3.3333333
+loop_mode = 1
+tracks/0/type = "blend_shape"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Model/RootNode/RobotArmature/Skeleton3D/Head_2/Head:Sad")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 1)
+metadata/gamedirector_base_clip = "Idle"
+
+[sub_resource type="Animation" id="expr_Surprised"]
+length = 3.3333333
+loop_mode = 1
+tracks/0/type = "blend_shape"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Model/RootNode/RobotArmature/Skeleton3D/Head_2/Head:Surprised")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 1)
+metadata/gamedirector_base_clip = "Idle"
+
+[sub_resource type="AnimationLibrary" id="expressions"]
+_data = {
+"Angry": SubResource("expr_Angry"),
+"Sad": SubResource("expr_Sad"),
+"Surprised": SubResource("expr_Surprised")
+}
+
+[sub_resource type="StandardMaterial3D" id="pip_paint"]
+albedo_color = Color(1, 0.101, 0.061, 1)
+metallic = 0.15
+roughness = 0.38
+
+[sub_resource type="Environment" id="environment"]
+background_mode = 1
+background_color = Color(0.02, 0.03, 0.05, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.86, 0.91, 1, 1)
+ambient_light_energy = 0.65
+
+[node name="Stardeck" type="Node3D"]
+metadata/gamedirector_game = "Stardeck"
+metadata/gamedirector_version = "example-1"
+
+[node name="bolt" type="Node3D" parent="."]
+position = Vector3(0, 0, 9)
+rotation = Vector3(0, 3.141592653589793, 0)
+metadata/gamedirector_role = "bolt"
+metadata/gamedirector_actor = "robot-yellow"
+metadata/gamedirector_kind = "hero"
+metadata/gamedirector_present_at_start = true
+metadata/gamedirector_rest_clip = "Idle"
+metadata/gamedirector_move_clip = "Walking"
+metadata/gamedirector_motion_fade = 0.25
+metadata/gamedirector_motion_rate = 1.05
+metadata/gamedirector_return_clip = "Idle"
+metadata/gamedirector_return_fade = 0.3
+metadata/gamedirector_loop_clips = ["Idle", "Walking", "Running", "Dance"]
+metadata/gamedirector_hold_clips = ["Death", "Sitting", "Standing"]
+
+[node name="Model" parent="bolt" instance=ExtResource("robot")]
+scale = Vector3(0.4, 0.4, 0.4)
+
+[node name="AnimationPlayer" parent="bolt/Model"]
+callback_mode_process = 2
+
+[node name="Expressions" type="AnimationPlayer" parent="bolt"]
+callback_mode_process = 2
+libraries = {&"": SubResource("expressions")}
+
+[node name="pip" type="Node3D" parent="."]
+position = Vector3(0, 0, -9)
+metadata/gamedirector_role = "pip"
+metadata/gamedirector_actor = "robot-red"
+metadata/gamedirector_kind = "npc"
+metadata/gamedirector_present_at_start = true
+metadata/gamedirector_rest_clip = "Idle"
+metadata/gamedirector_move_clip = "Walking"
+metadata/gamedirector_motion_fade = 0.25
+metadata/gamedirector_motion_rate = 1.05
+metadata/gamedirector_return_clip = "Idle"
+metadata/gamedirector_return_fade = 0.3
+metadata/gamedirector_loop_clips = ["Idle", "Walking", "Running", "Dance"]
+metadata/gamedirector_hold_clips = ["Death", "Sitting", "Standing"]
+
+[node name="Model" parent="pip" instance=ExtResource("robot")]
+scale = Vector3(0.4, 0.4, 0.4)
+
+[node name="AnimationPlayer" parent="pip/Model"]
+callback_mode_process = 2
+
+[node name="Torso" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/Body" index="0"]
+surface_material_override/1 = SubResource("pip_paint")
+
+[node name="Head" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/Head_2" index="0"]
+surface_material_override/1 = SubResource("pip_paint")
+
+[node name="Shoulder_L" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/Shoulder_L" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Arm_L" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/UpperArm_L" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Shoulder_R" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/Shoulder_R" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Arm_R" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/UpperArm_R" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Leg_L" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/UpperLeg_L" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="LowerLeg_L" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/LowerLeg_L" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Leg_R" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/UpperLeg_R" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="LowerLeg_R" parent="pip/Model/RootNode/RobotArmature/Skeleton3D/LowerLeg_R" index="0"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Hand_R" parent="pip/Model/RootNode/RobotArmature/Skeleton3D" index="22"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Hand_L" parent="pip/Model/RootNode/RobotArmature/Skeleton3D" index="23"]
+surface_material_override/0 = SubResource("pip_paint")
+
+[node name="Expressions" type="AnimationPlayer" parent="pip"]
+callback_mode_process = 2
+libraries = {&"": SubResource("expressions")}
+
+[node name="Hallway" parent="." instance=ExtResource("hall")]
+position = Vector3(-20.115, 3.08, 11)
+
+[node name="bolt_start" type="Marker3D" parent="."]
+position = Vector3(0, 0, 9)
+metadata/gamedirector_location = "bolt_start"
+
+[node name="bolt_mark" type="Marker3D" parent="."]
+position = Vector3(0, 0, 1.6)
+metadata/gamedirector_location = "bolt_mark"
+
+[node name="pip_start" type="Marker3D" parent="."]
+position = Vector3(0, 0, -9)
+metadata/gamedirector_location = "pip_start"
+
+[node name="pip_mark" type="Marker3D" parent="."]
+position = Vector3(0, 0, -1.6)
+metadata/gamedirector_location = "pip_mark"
+
+[node name="cam_front_wide" type="Marker3D" parent="."]
+position = Vector3(0, 1.8, -7.5)
+metadata/gamedirector_location = "cam_front_wide"
+
+[node name="cam_back_wide" type="Marker3D" parent="."]
+position = Vector3(0, 2.4, 13.6)
+metadata/gamedirector_location = "cam_back_wide"
+
+[node name="cam_low_side" type="Marker3D" parent="."]
+position = Vector3(2.4, 0.35, 6)
+metadata/gamedirector_location = "cam_low_side"
+
+[node name="cam_side_left" type="Marker3D" parent="."]
+position = Vector3(-3.2, 1.25, 0)
+metadata/gamedirector_location = "cam_side_left"
+
+[node name="cam_side_right" type="Marker3D" parent="."]
+position = Vector3(3.2, 1.25, 0)
+metadata/gamedirector_location = "cam_side_right"
+
+[node name="cam_high" type="Marker3D" parent="."]
+position = Vector3(0, 4.4, 6.8)
+metadata/gamedirector_location = "cam_high"
+
+[node name="cam_ots_bolt" type="Marker3D" parent="."]
+position = Vector3(1.5, 2.1, 6.4)
+metadata/gamedirector_location = "cam_ots_bolt"
+
+[node name="cam_ots_pip" type="Marker3D" parent="."]
+position = Vector3(-1.0, 1.6, -4.6)
+metadata/gamedirector_location = "cam_ots_pip"
+
+[node name="cam_low_front" type="Marker3D" parent="."]
+position = Vector3(0.6, 0.3, -1.0)
+metadata/gamedirector_location = "cam_low_front"
+
+[node name="cam_turn" type="Marker3D" parent="."]
+position = Vector3(0, 1.3, 4.6)
+metadata/gamedirector_location = "cam_turn"
+
+[node name="bolt_dance" type="Marker3D" parent="."]
+position = Vector3(0, 0, 0.9)
+metadata/gamedirector_location = "bolt_dance"
+
+[node name="pip_dance" type="Marker3D" parent="."]
+position = Vector3(0, 0, -0.9)
+metadata/gamedirector_location = "pip_dance"
+
+[node name="cam_single_bolt" type="Marker3D" parent="."]
+position = Vector3(1.3, 1.45, -0.7)
+metadata/gamedirector_location = "cam_single_bolt"
+
+[node name="cam_single_pip" type="Marker3D" parent="."]
+position = Vector3(-1.3, 1.45, 0.7)
+metadata/gamedirector_location = "cam_single_pip"
+
+[node name="cam_wide_side" type="Marker3D" parent="."]
+position = Vector3(3.4, 2.0, 0)
+metadata/gamedirector_location = "cam_wide_side"
+
+[node name="cam_turn_bolt" type="Marker3D" parent="."]
+position = Vector3(0, 1.25, 12.4)
+metadata/gamedirector_location = "cam_turn_bolt"
+
+[node name="cam_turn_pip" type="Marker3D" parent="."]
+position = Vector3(0, 1.25, -12.4)
+metadata/gamedirector_location = "cam_turn_pip"
+
+[node name="cam_moves" type="Marker3D" parent="."]
+position = Vector3(0, 1.15, 5.2)
+metadata/gamedirector_location = "cam_moves"
+
+[node name="cam_fly_start" type="Marker3D" parent="."]
+position = Vector3(0, 5.2, 14.2)
+metadata/gamedirector_location = "cam_fly_start"
+
+[node name="cam_fly_end" type="Marker3D" parent="."]
+position = Vector3(0, 2.6, 3.0)
+metadata/gamedirector_location = "cam_fly_end"
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("environment")
+
+[node name="Key" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.6981317, -0.5235988, 0)
+light_energy = 1.2
+
+[node name="Rim" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.3490659, 2.268928, 0)
+light_color = Color(0.66, 0.78, 1, 1)
+light_energy = 0.8
+
+[editable path="bolt/Model"]
+[editable path="pip/Model"]

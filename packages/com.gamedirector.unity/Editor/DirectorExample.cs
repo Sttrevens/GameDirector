@@ -13,15 +13,16 @@ namespace GameDirector.Unity.Editor
     public static class DirectorExample
     {
         [MenuItem("Tools/GameDirector/Create Independent Example")]
+        [MenuItem("Window/GameDirector/Create Independent Example")]
         public static void Create() { Selection.activeObject = CreateAsset(); }
         public static DirectorFilmAsset CreateAsset()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Exit Play Mode before creating example assets.");
+            if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException(DirectorUi.T("exitPlayMode"));
             for (var i = 0; i < SceneManager.sceneCount; i++)
             {
                 var scene = SceneManager.GetSceneAt(i);
                 if (scene.isLoaded && string.IsNullOrEmpty(scene.path) && !EditorSceneManager.IsPreviewScene(scene))
-                    throw new InvalidOperationException("Save or close the untitled scene before creating the example. No example assets were written.");
+                    throw new InvalidOperationException(DirectorUi.T("saveExampleScene"));
             }
             var folder = AssetDatabase.GenerateUniqueAssetPath("Assets/GameDirector Example");
             AssetDatabase.CreateFolder("Assets", Path.GetFileName(folder));
@@ -55,14 +56,7 @@ namespace GameDirector.Unity.Editor
         {
             // Names come from the stage vocabulary; the clip id is filled in by
             // the caller from the actually created Animator state.
-            var template = @"{
-              'version':1,'title':'第一次登场','frameRate':$FPS,'width':$W,'height':$H,
-              'scenes':[{'id':'greeting','performance':[{'t':0,'type':'actor.anim','role':'$ROLE','clip':'$CLIP','fade':0}],
-              'shots':[
-              {'id':'wide','start':0,'end':1,'purpose':'介绍角色与空间','camera':{'type':'$SHOT','subject':'$ROLE','from':'$WIDE','frame':'$FRAME'}},
-              {'id':'close','start':1,'end':2,'purpose':'靠近观察角色的回应','camera':{'type':'$SHOT','subject':'$ROLE','from':'$CLOSE','frame':'closeup'}},
-              {'id':'side','start':2,'end':3,'purpose':'从侧面收束表演','camera':{'type':'$SHOT','subject':'$ROLE','from':'$SIDE','frame':'$FRAME'}}]}],
-              'audio':[],'subtitles':[{'start':0,'end':1.5,'text':'第一次登场'},{'start':1.5,'end':3,'text':'每个镜头，都可以继续修改。'}]}";
+            var template = DirectorUi.ExampleFilmTemplate;
             return JObject.Parse(template
                 // Longest tokens first: "$W" is a prefix of "$WIDE", "$H" of "$SHOT".
                 .Replace("$WIDE", DirectorStageVocabulary.WideAnchor)

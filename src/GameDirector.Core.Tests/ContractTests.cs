@@ -79,6 +79,22 @@ public class ShotVocabularyTests
         Assert.False(ShotVocabulary.ValidEase("bounce"));
     }
 
+    [Fact] public void ParamTableMatchesTheUnityRigVocabulary()
+    {
+        // The compiler admits exactly these names when a manifest does not
+        // narrow them via camera.params; the Unity rig is the canonical reader.
+        Assert.Equal(new[] { "targetHeight", "coverage", "distance", "offsetX", "offsetY", "offsetZ",
+            "toOffsetX", "toOffsetY", "toOffsetZ", "orbitDeg", "shake", "tilt", "pan", "roll", "endFov" },
+            ShotVocabulary.Params.Select(p => p.Name));
+        Assert.All(ShotVocabulary.Params, p => { Assert.False(string.IsNullOrWhiteSpace(p.Unit)); Assert.False(string.IsNullOrWhiteSpace(p.Meaning)); });
+        Assert.Equal(90f, ShotVocabulary.FindParam("orbitDeg").Default);
+        Assert.Equal(0f, ShotVocabulary.FindParam("shake").Default);
+        Assert.Null(ShotVocabulary.FindParam("coverage").Default);   // derived from the frame size
+        Assert.Null(ShotVocabulary.FindParam("endFov").Default);     // derived from the start fov
+        Assert.Null(ShotVocabulary.FindParam("tiltDeg"));            // typos are not vocabulary
+        Assert.Equal("current", ShotVocabulary.CurrentAnchor);
+    }
+
     [Fact] public void CompilerTakesTargetRequirementFromVocabulary()
     {
         // A manifest-declared custom shot type compiles without a destination
@@ -131,6 +147,14 @@ public class SubtitleRendererTests
 
 public class MediaFormatsTests
 {
+    [Theory] [InlineData(1)] [InlineData(24)] [InlineData(60)]
+    public void SourceWindowsShareTheFilmFrameBoundaryNoise(int fps)
+    {
+        Assert.True(MediaFormats.AudioWindowFitsSource(.5, 2.5, 3, fps));
+        Assert.True(MediaFormats.AudioWindowFitsSource(.5, 2.5 + .000005 / fps, 3, fps));
+        Assert.False(MediaFormats.AudioWindowFitsSource(.5, 2.5 + .00002 / fps, 3, fps));
+        Assert.False(MediaFormats.AudioWindowFitsSource(0, 3.00002, 3, fps));
+    }
     [Fact] public void ImportAndNormalizeShareOneFormatTable()
     {
         foreach (var ext in new[] { ".wav", ".mp3", ".m4a", ".ogg", ".flac" })
@@ -157,5 +181,23 @@ public class MediaToolResolutionTests
             Assert.Equal(overridePath, tool.Path);
         Assert.Equal("ffmpeg", tool.Name);
         Assert.False(string.IsNullOrWhiteSpace(tool.Source));
+    }
+}
+
+public class MediaToolFrameRateTests
+{
+    [Fact] public void AvgFrameRateIsAnExactRationalNeverAFloatTolerance()
+    {
+        Assert.True(MediaTools.FrameRateMatches("24/1", 24));
+        Assert.True(MediaTools.FrameRateMatches("48/2", 24));         // same rate, different rational
+        Assert.False(MediaTools.FrameRateMatches("24000/1001", 24));  // 23.976 is not 24
+        Assert.False(MediaTools.FrameRateMatches("2500001/100000", 25)); // inside the old .001 tolerance
+        Assert.False(MediaTools.FrameRateMatches("-24/9223372036854775807", 24)); // multiplication must not wrap
+        Assert.True(MediaTools.FrameRateMatches("18446744073709551614/9223372036854775807", 2));
+        Assert.False(MediaTools.FrameRateMatches("-24/-1", 24));
+        Assert.False(MediaTools.FrameRateMatches("0/1", 0));
+        Assert.False(MediaTools.FrameRateMatches("0/0", 24));         // unknown rate, den 0
+        Assert.False(MediaTools.FrameRateMatches("24", 24));          // not a rational
+        Assert.False(MediaTools.FrameRateMatches("junk/1", 24));
     }
 }

@@ -10,9 +10,9 @@ public static class ProjectFolders
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var path = string.IsNullOrWhiteSpace(request.Path) ? home : request.Path;
-        if (!System.IO.Path.IsPathFullyQualified(path)) throw new ArgumentException("请选择完整的文件夹路径。");
+        if (!System.IO.Path.IsPathFullyQualified(path)) throw new InvalidInputFault("Choose a full folder path.", messageCode: "folder_absolute");
         var folder = new DirectoryInfo(System.IO.Path.GetFullPath(path));
-        if (!folder.Exists) throw new ArgumentException("文件夹不存在或无法访问，请返回主目录重新选择。");
+        if (!folder.Exists) throw new InvalidInputFault("This folder does not exist or cannot be accessed. Go back to Home and choose another folder.", messageCode: "folder_unavailable");
         var options = new EnumerationOptions { RecurseSubdirectories = false, IgnoreInaccessible = false, AttributesToSkip = FileAttributes.Hidden | FileAttributes.System };
         var children = folder.EnumerateDirectories("*", options).Where(d => !d.Name.StartsWith('.')).Take(2001).ToArray();
         var volumes = OperatingSystem.IsWindows() ? DriveInfo.GetDrives().Where(d => d.IsReady).Select(d => d.RootDirectory.FullName) : new[] { System.IO.Path.GetPathRoot(home)! };

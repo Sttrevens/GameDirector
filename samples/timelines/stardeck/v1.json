@@ -1,0 +1,152 @@
+{
+ "version": "0.1",
+ "id": "stardeck-meet-v1",
+ "title": "走廊相遇 · 第一版",
+ "cues": [
+  {
+   "t": 0,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Idle",
+   "fade": 0
+  },
+  {
+   "t": 0,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Idle",
+   "fade": 0
+  },
+  {
+   "t": 0,
+   "type": "actor.move",
+   "role": "bolt",
+   "to": "bolt_mark",
+   "speed": 1.6,
+   "headingTo": "pip"
+  },
+  {
+   "t": 0.4,
+   "type": "actor.move",
+   "role": "pip",
+   "to": "pip_mark",
+   "speed": 1.6,
+   "headingTo": "bolt"
+  },
+  {
+   "t": 0,
+   "type": "marker",
+   "label": "两个机器人从走廊两端走来"
+  },
+  {
+   "t": 0,
+   "type": "camera.shot",
+   "shot": {
+    "type": "lockoff",
+    "subject": "bolt",
+    "frame": "wide",
+    "from": "cam_back_wide",
+    "durationSeconds": 5.4,
+    "fov": 46,
+    "ease": "inOut",
+    "params": {
+     "targetHeight": 1.0
+    }
+   }
+  },
+  {
+   "t": 5.4,
+   "type": "marker",
+   "label": "打招呼"
+  },
+  {
+   "t": 5.4,
+   "type": "camera.shot",
+   "shot": {
+    "type": "lockoff",
+    "subject": "bolt",
+    "with": [
+     "pip"
+    ],
+    "frame": "medium",
+    "from": "cam_side_right",
+    "durationSeconds": 3.6,
+    "fov": 58,
+    "ease": "inOut",
+    "params": {
+     "targetHeight": 1.0,
+     "pan": 26
+    }
+   }
+  },
+  {
+   "t": 5.6,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Wave",
+   "fade": 0.2
+  },
+  {
+   "t": 6.6,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Wave",
+   "fade": 0.2
+  },
+  {
+   "t": 9,
+   "type": "marker",
+   "label": "一起跳舞"
+  },
+  {
+   "t": 9,
+   "type": "actor.move",
+   "role": "bolt",
+   "to": "bolt_dance",
+   "speed": 1.2,
+   "headingTo": "pip"
+  },
+  {
+   "t": 9,
+   "type": "actor.move",
+   "role": "pip",
+   "to": "pip_dance",
+   "speed": 1.2,
+   "headingTo": "bolt"
+  },
+  {
+   "t": 9,
+   "type": "camera.shot",
+   "shot": {
+    "type": "lockoff",
+    "subject": "pip",
+    "with": [
+     "bolt"
+    ],
+    "frame": "wide",
+    "from": "cam_wide_side",
+    "durationSeconds": 7,
+    "fov": 52,
+    "ease": "inOut",
+    "params": {
+     "targetHeight": 1.0,
+     "pan": -15
+    }
+   }
+  },
+  {
+   "t": 9.7,
+   "type": "actor.anim",
+   "role": "bolt",
+   "clip": "Dance",
+   "fade": 0.25
+  },
+  {
+   "t": 9.7,
+   "type": "actor.anim",
+   "role": "pip",
+   "clip": "Dance",
+   "fade": 0.25
+  }
+ ]
+}

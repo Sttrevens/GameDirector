@@ -12,28 +12,30 @@ public static class RuntimeLauncher
     /// Throws an actionable error when this gd was not shipped with that app.</summary>
     public static string ResolveSibling(string appKey)
     {
-        var root = DistributionManifest.FindRoot();
-        if (root == null)
+        var overrideRoot = Environment.GetEnvironmentVariable(DistributionManifest.RootOverrideVariable);
+        var runtimeFolder = AppContext.BaseDirectory;
+        var root = !string.IsNullOrWhiteSpace(overrideRoot) ? DistributionManifest.FindRoot() : null;
+        if (root != null)
+        {
+            var layout = DistributionManifest.Load(Path.Combine(root, DistributionManifest.ManifestFileName));
+            runtimeFolder = Path.Combine(root, layout.RuntimeFolder);
+        }
+        if (!File.Exists(Path.Combine(runtimeFolder, DistributionManifest.RuntimeManifestFileName)))
             throw new InvalidOperationException(
-                $"This gd does not belong to a full GameDirector distribution, so it cannot launch '{appKey}'. " +
+                $"This gd has no shared runtime manifest at {runtimeFolder}, so it cannot launch '{appKey}'. " +
                 $"Install the full distribution for this platform (tools/package_release.py output) or set {DistributionManifest.RootOverrideVariable}.");
-        var manifest = DistributionManifest.Load(Path.Combine(root, DistributionManifest.ManifestFileName));
-        var executable = manifest.SiblingExecutable(appKey, root, DistributionManifest.CurrentRid());
-        if (!File.Exists(executable))
-            throw new InvalidOperationException(
-                $"The distribution at {root} has no '{appKey}' app at {Path.GetRelativePath(root, executable)}. " +
-                "Reinstall the complete distribution for this platform.");
-        var runtime = RuntimeManifest.Load(Path.Combine(Path.GetDirectoryName(executable)!, DistributionManifest.RuntimeManifestFileName));
-        var mismatch = runtime.CompatibilityFailure(DistributionManifest.CurrentRid(), manifest.ProtocolVersion);
-        if (mismatch != null || runtime.App != appKey)
+        var runtime = RuntimeManifest.Load(Path.Combine(runtimeFolder, DistributionManifest.RuntimeManifestFileName));
+        var mismatch = runtime.CompatibilityFailure(DistributionManifest.CurrentRid(), Core.Dsl.WorkbenchService.ProtocolVersion);
+        if (mismatch != null || runtime.App != "shared" || !runtime.Apps.ContainsKey(appKey))
             throw new InvalidOperationException("Companion runtime is incompatible: " + (mismatch ?? "wrong application identity") + ". Reinstall the matching complete distribution.");
         runtime.ValidateDeclaredPaths();
+        var relative = runtime.Apps[appKey];
+        var executable = Path.Combine(runtimeFolder, relative);
         // The native host loads managed assemblies and runtime libraries. Its
         // own hash alone cannot verify the program that will actually execute.
-        var relative = Path.GetFileName(executable);
         var failure = !runtime.Sha256.ContainsKey(relative)
             ? "entry executable is not declared in the runtime manifest: " + relative
-            : runtime.IntegrityFailure(Path.GetDirectoryName(executable)!);
+            : runtime.IntegrityFailure(runtimeFolder);
         if (failure != null)
             throw new InvalidOperationException("Companion runtime failed integrity verification: " + failure + ". Reinstall the complete distribution.");
         return executable;

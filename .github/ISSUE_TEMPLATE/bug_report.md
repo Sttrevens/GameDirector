@@ -13,7 +13,7 @@ labels: bug
 
 **Environment**
 
-- GameDirector version / distribution (e.g. 0.2.0-alpha.1, win-x64 zip):
+- GameDirector version / distribution (e.g. 0.1.0, win-x64 zip):
 - OS:
 - Engine + version (if in-game, e.g. Unity 2022.3.34f1):
 - Install method (full distribution / Unity tarball / from source):

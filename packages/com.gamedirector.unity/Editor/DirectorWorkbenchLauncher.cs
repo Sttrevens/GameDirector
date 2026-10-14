@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using GameDirector.Core.Dsl;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -13,7 +14,7 @@ using UnityEngine;
 namespace GameDirector.Unity.Editor
 {
     /// <summary>Launch the workbench runtime shipped inside the full UPM package
-    /// (Tools~/Workbench). Validates platform/protocol compatibility against the
+    /// (Tools~/bin). Validates platform/protocol compatibility against the
     /// bundled gamedirector.runtime.json, repairs Unix executable permissions
     /// lost by cross-built archives, and never writes into PackageCache — when
     /// the package lives there and needs chmod, the runtime is mirrored into the
@@ -22,12 +23,41 @@ namespace GameDirector.Unity.Editor
     public static class DirectorWorkbenchLauncher
     {
         private static readonly SemaphoreSlim starting = new SemaphoreSlim(1, 1);
+        private const string RuntimeFolderPreference = "GameDirector.RuntimeFolder";
         public static string RuntimeFolder
         {
-            get => EditorPrefs.GetString("GameDirector.RuntimeFolder", "");
-            set => EditorPrefs.SetString("GameDirector.RuntimeFolder", value);
+            get => EditorPrefs.GetString(RuntimeFolderPreference, "");
+            set => EditorPrefs.SetString(RuntimeFolderPreference, value);
         }
-        private static string Executable(string root) => Path.Combine(root, Application.platform == RuntimePlatform.WindowsEditor ? "gamedirector-workbench.exe" : "gamedirector-workbench");
+        [MenuItem("Tools/GameDirector/Clear Runtime Folder Preference")]
+        public static void ClearRuntimeFolder() => EditorPrefs.DeleteKey(RuntimeFolderPreference);
+
+        private const string RuntimeManifestFile = "gamedirector.runtime.json";
+        private static string Executable(string root) => AppExecutable(root, "workbench");
+
+        private static string AppExecutable(string root, string app)
+        {
+            root = Path.GetFullPath(string.IsNullOrEmpty(root) ? "." : root);
+            var path = Path.Combine(root, RuntimeManifestFile);
+            var name = File.Exists(path) ? (string)JObject.Parse(File.ReadAllText(path))["apps"]?[app] : null;
+            if (name == null && app == "workbench" && !File.Exists(path))
+                name = Application.platform == RuntimePlatform.WindowsEditor ? "gamedirector-workbench.exe" : "gamedirector-workbench";
+            if (!TryResolveBelow(root, name, out var full))
+                throw new InvalidOperationException(DirectorUi.T("unsafeProgram") + app);
+            return full;
+        }
+
+        /// <summary>Read the generated copy of the canonical distribution layout.</summary>
+        public static string BundledRuntimeRoot(string packageRoot)
+        {
+            var path = Path.Combine(packageRoot, "distribution.json");
+            if (!File.Exists(path)) return null; // source-only package
+            var layout = JObject.Parse(File.ReadAllText(path));
+            var relative = (string)layout["unity"]?["bundledRuntimeParent"] + "/" + (string)layout["runtimeFolder"];
+            if (!TryResolveBelow(packageRoot, relative, out var full))
+                throw new InvalidOperationException(DirectorUi.T("unsafeRuntime"));
+            return full;
+        }
 
         /// <summary>The runtime identifier this Unity editor needs, matching the
         /// distribution manifest's platform names.</summary>
@@ -44,8 +74,9 @@ namespace GameDirector.Unity.Editor
             return platform + "-" + System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
         }
 
-        private const int RequiredProtocol = 1;
-
+        // Product, protocol and the per-user data root are stated once in Core
+        // (WorkbenchService/GameDirectorPaths) so the launcher and the Workbench
+        // can never drift onto two different stores or contracts.
         private static bool IsPackageCache(string path) => path.Replace('\\', '/').Contains("/PackageCache/");
 
         /// <summary>Validate the bundled runtime's manifest against this editor.
@@ -54,31 +85,29 @@ namespace GameDirector.Unity.Editor
         /// only acceptable for a user-chosen legacy runtime folder.</summary>
         private static JObject ValidateRuntimeManifest(string root, bool fromPackage)
         {
-            var manifestPath = Path.Combine(root, "gamedirector.runtime.json");
+            var manifestPath = Path.Combine(root, RuntimeManifestFile);
             if (!File.Exists(manifestPath))
             {
                 if (fromPackage)
                     throw new InvalidOperationException(
-                        "此 GameDirector 包没有随附本平台的工作台运行组件（缺少 Tools~/Workbench/gamedirector.runtime.json），" +
-                        "通常是源码方式（Git URL）安装的精简包。请改用完整平台 UPM 包：Unity Package Manager → Add package from tarball → " +
-                        "com.gamedirector.unity-<版本>-" + CurrentRid() + ".tgz（由 GameDirector 发行流程产出，请向提供方索取）。");
+                        DirectorUi.T("missingManifest", CurrentRid()));
                 return null;
             }
             JObject manifest;
             try { manifest = JObject.Parse(File.ReadAllText(manifestPath)); }
-            catch (Exception ex) { throw new InvalidOperationException("运行组件清单无法解析：" + manifestPath + " — " + ex.Message); }
+            catch (Exception ex) { throw new InvalidOperationException(DirectorUi.T("parseManifest") + manifestPath + " — " + ex.Message); }
             var rid = (string)manifest["rid"];
             var protocol = (int?)manifest["protocolVersion"] ?? 0;
-            if ((string)manifest["product"] != "GameDirector")
-                throw new InvalidOperationException("运行组件清单不是 GameDirector 产物：" + manifestPath);
+            if ((string)manifest["product"] != WorkbenchService.Product)
+                throw new InvalidOperationException(DirectorUi.T("wrongProduct") + manifestPath);
             if (rid != CurrentRid())
                 throw new InvalidOperationException(
-                    "随包工作台运行组件面向 " + rid + "，但当前 Unity 编辑器是 " + CurrentRid() +
-                    "。请安装面向本平台的完整 UPM 包（com.gamedirector.unity-<版本>-" + CurrentRid() + ".tgz）。");
-            if (protocol != RequiredProtocol)
+                    DirectorUi.T("wrongRid", rid, CurrentRid()));
+            if (protocol != WorkbenchService.ProtocolVersion)
                 throw new InvalidOperationException(
-                    "随包工作台协议版本 " + protocol + " 与本编辑器插件要求的 " + RequiredProtocol +
-                    " 不兼容。请升级或降级到相互匹配的同版本包。");
+                    DirectorUi.T("wrongProtocol", protocol, WorkbenchService.ProtocolVersion));
+            if ((string)manifest["app"] != "shared" || !(manifest["apps"] is JObject))
+                throw new InvalidOperationException(DirectorUi.T("sharedRuntimeRequired"));
             return manifest;
         }
 
@@ -87,9 +116,9 @@ namespace GameDirector.Unity.Editor
         private static bool TryResolveBelow(string root, string relative, out string full)
         {
             full = null;
-            if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative)) return false;
+            if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) || relative.Contains(":")) return false;
             foreach (var segment in relative.Replace('\\', '/').Split('/'))
-                if (segment == ".." || segment.Length == 0) return false;
+                if (segment == ".." || segment == "." || segment.Length == 0) return false;
             full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
             return full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
         }
@@ -100,15 +129,31 @@ namespace GameDirector.Unity.Editor
         private static bool VerifyDeclaredHashes(string root, JObject runtime, out string error)
         {
             if (runtime == null) { error = null; return true; }
+            root = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var map = runtime["sha256"] as JObject;
             if (map == null || map[Path.GetFileName(Executable(root))] == null)
-            { error = "运行组件清单缺少程序的校验值，请重新安装完整平台包。"; return false; }
+            { error = DirectorUi.T("missingHashes"); return false; }
+            var apps = runtime["apps"] as JObject;
+            if (apps == null) { error = DirectorUi.T("missingApps"); return false; }
+            var declared = apps.Properties().Select(p => (string)p.Value)
+                .Concat((runtime["executables"] as JArray)?.Values<string>() ?? Enumerable.Empty<string>());
+            foreach (var name in declared)
+            {
+                if (!TryResolveBelow(root, name, out _)) { error = DirectorUi.T("unsafeApp") + name; return false; }
+                if (map[name] == null) { error = DirectorUi.T("missingAppHash") + name; return false; }
+            }
             if (map != null)
             {
                 foreach (var prop in map.Properties())
                 {
-                    if (!TryResolveBelow(root, prop.Name, out var full)) { error = "清单声明了越界路径：" + prop.Name; return false; }
-                    if (!File.Exists(full)) { error = "缺少清单声明的文件：" + prop.Name; return false; }
+                    if (!TryResolveBelow(root, prop.Name, out var full)) { error = DirectorUi.T("unsafePath") + prop.Name; return false; }
+                    if (!File.Exists(full)) { error = DirectorUi.T("missingFile") + prop.Name; return false; }
+                    for (var path = full; ; path = Path.GetDirectoryName(path))
+                    {
+                        if (RuntimeLinks.IsLink(path))
+                        { error = DirectorUi.T("linkedPath") + prop.Name; return false; }
+                        if (path == Path.GetFullPath(root)) break;
+                    }
                     string actual;
                     try
                     {
@@ -116,15 +161,28 @@ namespace GameDirector.Unity.Editor
                         using (var sha = SHA256.Create())
                             actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
                     }
-                    catch (IOException ex) { error = "无法读取：" + prop.Name + "（" + ex.Message + "）"; return false; }
-                    catch (UnauthorizedAccessException ex) { error = "无法读取：" + prop.Name + "（" + ex.Message + "）"; return false; }
-                    if (!string.Equals(actual, (string)prop.Value, StringComparison.OrdinalIgnoreCase)) { error = "文件被改动或损坏：" + prop.Name; return false; }
+                    catch (IOException ex) { error = DirectorUi.T("unreadableFile", prop.Name, ex.Message); return false; }
+                    catch (UnauthorizedAccessException ex) { error = DirectorUi.T("unreadableFile", prop.Name, ex.Message); return false; }
+                    if (!string.Equals(actual, (string)prop.Value, StringComparison.OrdinalIgnoreCase)) { error = DirectorUi.T("changedFile") + prop.Name; return false; }
                 }
             }
             var executables = runtime["executables"] as JArray;
             if (executables != null)
                 foreach (var name in executables.Values<string>())
-                    if (!TryResolveBelow(root, name, out _)) { error = "清单声明了越界的可执行文件路径：" + name; return false; }
+                    if (!TryResolveBelow(root, name, out _)) { error = DirectorUi.T("unsafeExecutable") + name; return false; }
+            var pending = new System.Collections.Generic.Stack<string>(); pending.Push(root);
+            while (pending.Count > 0)
+                foreach (var path in Directory.EnumerateFileSystemEntries(pending.Pop()))
+                {
+                    var relative = path.Substring(Path.GetFullPath(root).Length + 1).Replace('\\', '/');
+                    var attributes = File.GetAttributes(path);
+                    if (RuntimeLinks.IsLink(path)) { error = DirectorUi.T("linkedPath") + relative; return false; }
+                    if ((attributes & FileAttributes.Directory) != 0) { pending.Push(path); continue; }
+                    // .complete is the existing mirror's non-executable publication marker.
+                    if (relative != RuntimeManifestFile && relative != GameDirectorPaths.RuntimeMirrorMarkerFile &&
+                        !RuntimeFilePolicy.IsOsMetadata(Path.GetFileName(path)) && map[relative] == null)
+                    { error = DirectorUi.T("undeclaredFile") + relative; return false; }
+                }
             error = null;
             return true;
         }
@@ -135,7 +193,58 @@ namespace GameDirector.Unity.Editor
         {
             if (runtime == null) return;
             if (!VerifyDeclaredHashes(root, runtime, out var error))
-                throw new InvalidOperationException("工作台运行组件未通过完整性校验：" + error + "。请重新安装完整的 GameDirector 平台包。");
+                throw new InvalidOperationException(DirectorUi.T("integrityFailed", error));
+        }
+
+        /// <summary>Resolve bundled gd using the Workbench's SAME compatibility,
+        /// whole-tree integrity and Unix permission/mirror gates. No new trust path.</summary>
+        public static string ResolveBundledCli()
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(DirectorWorkbenchLauncher).Assembly);
+            var bundled = package != null ? BundledRuntimeRoot(package.resolvedPath) : null;
+            if (bundled == null)
+                throw new InvalidOperationException(DirectorUi.T("noBundledCli", CurrentRid()));
+            return ResolveBundledCliFrom(bundled);
+        }
+
+        private static string ResolveBundledCliFrom(string bundled)
+        {
+            try
+            {
+                var runtime = ValidateRuntimeManifest(bundled, fromPackage: true);
+                VerifyRuntimeIntegrity(bundled, runtime);
+                var root = PrepareExecutable(bundled, runtime);
+                var cli = AppExecutable(root, "cli");
+                RequireExecuteBit(cli);
+                return cli;
+            }
+            catch (Exception ex)
+            {
+                // Copy MCP Config keeps one actionable failure boundary.
+                throw new InvalidOperationException(DirectorUi.T("bundledCliFailed", bundled, CurrentRid()), ex);
+            }
+        }
+
+        private static bool TryPreferredRuntime(out string root, out JObject runtime)
+        {
+            root = null; runtime = null;
+            var selected = RuntimeFolder;
+            if (string.IsNullOrWhiteSpace(selected)) return false;
+            try
+            {
+                var full = Path.GetFullPath(selected);
+                // Old per-app layouts are not a shared runtime preference.
+                var manifest = ValidateRuntimeManifest(full, fromPackage: true);
+                VerifyRuntimeIntegrity(full, manifest);
+                if (!File.Exists(Executable(full))) throw new InvalidOperationException(DirectorUi.T("missingWorkbench"));
+                root = full; runtime = manifest;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning(DirectorUi.T("invalidPreference", RuntimeFolderPreference, selected, ex.Message));
+                return false;
+            }
         }
 
         public static async Task EnsureStarted(CancellationToken ct = default)
@@ -144,17 +253,21 @@ namespace GameDirector.Unity.Editor
             try
             {
                 if (await Healthy(ct)) return;
-                var data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDirector", "Workbench");
-                var descriptor = Path.Combine(data, ".service.json");
-                if (await Discover(descriptor, ct)) return;
-                var root = RuntimeFolder;
-                if (!File.Exists(Executable(root)))
+                if (Environment.GetEnvironmentVariable("GAMEDIRECTOR_WORKBENCH") != null)
+                    throw new InvalidOperationException(DirectorUi.T("unauthenticated"));
+                var data = GameDirectorPaths.WorkbenchStore();
+                if (TryPreferredRuntime(out var preferred, out var preferredRuntime))
+                {
+                    await StartFrom(PrepareExecutable(preferred, preferredRuntime), data, ct);
+                    return;
+                }
+                var root = "";
                 {
                     var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(DirectorWorkbenchLauncher).Assembly);
                     if (package != null)
                     {
-                        var bundled = Path.Combine(package.resolvedPath, "Tools~", "Workbench");
-                        if (File.Exists(Executable(bundled)) || File.Exists(Path.Combine(bundled, "gamedirector.runtime.json")))
+                        var bundled = BundledRuntimeRoot(package.resolvedPath);
+                        if (bundled != null && File.Exists(Path.Combine(bundled, RuntimeManifestFile)))
                         {
                             // Full platform package: validate compatibility first —
                             // a platform or protocol mismatch must fail with words,
@@ -170,27 +283,14 @@ namespace GameDirector.Unity.Editor
                         // Package present but carries no runtime: a source-only
                         // (Git URL) install. Explain, then still allow picking a
                         // runtime folder from a full distribution by hand.
-                        EditorUtility.DisplayDialog("GameDirector 工作台",
-                            "此来源安装的 GameDirector 包不含工作台运行组件（精简源码包）。\n\n" +
-                            "推荐：改用完整平台 UPM 包 — Unity Package Manager → Add package from tarball → " +
-                            "com.gamedirector.unity-<版本>-" + CurrentRid() + ".tgz（由 GameDirector 发行流程产出，请向包提供方索取）。\n\n" +
-                            "或：在接下来打开的文件夹选择器中，手动指向完整发行版里的 workbench 文件夹。",
-                            "了解");
+                        EditorUtility.DisplayDialog(DirectorUi.T("workbenchTitle"),
+                            DirectorUi.T("sourceOnly", CurrentRid()),
+                            DirectorUi.T("understood"));
                     }
                 }
-                else
-                {
-                    // A previously configured runtime folder: validate when it
-                    // carries a manifest (legacy folders without one still launch).
-                    var runtime = ValidateRuntimeManifest(root, fromPackage: false);
-                    VerifyRuntimeIntegrity(root, runtime);
-                    root = PrepareExecutable(root, runtime);
-                    await StartFrom(root, data, ct);
-                    return;
-                }
-                var picked = EditorUtility.OpenFolderPanel("选择 GameDirector 运行组件的 workbench 文件夹", RuntimeFolder, "");
+                var picked = EditorUtility.OpenFolderPanel(DirectorUi.T("runtimeFolderTitle"), RuntimeFolder, "");
                 if (picked == "") throw new OperationCanceledException();
-                if (!File.Exists(Executable(picked))) throw new InvalidOperationException("该文件夹没有独立工作台程序。请选择本平台发行包中的 workbench 文件夹。");
+                if (!File.Exists(Executable(picked))) throw new InvalidOperationException(DirectorUi.T("wrongRuntimeFolder"));
                 var pickedRuntime = ValidateRuntimeManifest(picked, fromPackage: false);
                 VerifyRuntimeIntegrity(picked, pickedRuntime);
                 RuntimeFolder = picked;
@@ -205,12 +305,8 @@ namespace GameDirector.Unity.Editor
             var logPath = Path.Combine(data, "logs", "launcher-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + ".log");
             var info = new ProcessStartInfo(Executable(root)) { UseShellExecute = false, CreateNoWindow = true,
                 WorkingDirectory = root, Arguments = "--port 0 --data " + Quote(data), RedirectStandardOutput = true, RedirectStandardError = true };
-            var media = Path.GetFullPath(Path.Combine(root, "..", "media"));
-            foreach (var name in new[] { "ffmpeg", "ffprobe" })
-            {
-                var tool = Path.Combine(media, name + (Application.platform == RuntimePlatform.WindowsEditor ? ".exe" : ""));
-                if (File.Exists(tool)) info.EnvironmentVariables[name == "ffmpeg" ? "GAMEDIRECTOR_FFMPEG" : "GAMEDIRECTOR_FFPROBE"] = tool;
-            }
+            // MediaTools.Resolve already probes runtime/media, ../media and
+            // GameDirectorPaths.Media. Keep explicit user env overrides intact.
             var process = new Process { StartInfo = info, EnableRaisingEvents = true };
             var logGate = new object();
             DataReceivedEventHandler log = (_, e) => { if (e.Data != null) { lock (logGate) { try { File.AppendAllText(logPath, e.Data + Environment.NewLine); } catch (IOException) { } } } };
@@ -221,17 +317,17 @@ namespace GameDirector.Unity.Editor
             }
             catch (Win32Exception ex)
             {
-                throw new InvalidOperationException("无法启动工作台程序 " + Executable(root) + "：" + ex.Message + "。日志：" + logPath, ex);
+                throw new InvalidOperationException(DirectorUi.T("startFailed", Executable(root), ex.Message, logPath), ex);
             }
             process.BeginOutputReadLine(); process.BeginErrorReadLine();
             // The service owns its lifetime; closing an Inspector does not stop jobs.
             for (var i = 0; i < 60; i++)
             {
-                if (await Discover(Path.Combine(data, ".service.json"), ct)) return;
-                if (process.HasExited) throw new InvalidOperationException("工作台启动失败，请查看 " + logPath);
+                if (await Discover(Path.Combine(data, GameDirectorPaths.ServiceDescriptorFile), ct)) return;
+                if (process.HasExited) throw new InvalidOperationException(DirectorUi.T("launchExited", logPath));
                 await Task.Delay(250, ct);
             }
-            throw new InvalidOperationException("工作台仍未就绪。重试连接会先检查现有实例。日志：" + logPath);
+            throw new InvalidOperationException(DirectorUi.T("launchTimeout", logPath));
         }
 
         /// <summary>Unix executables arriving from a cross-built archive (the tgz
@@ -243,7 +339,12 @@ namespace GameDirector.Unity.Editor
             if (Application.platform == RuntimePlatform.WindowsEditor) return root;
             var exe = Executable(root);
             if (!File.Exists(exe)) return root;
-            if (HasExecuteBit(exe)) return root;
+            var names = runtime?["executables"]?.Values<string>().ToArray() ?? new[] { Path.GetFileName(exe) };
+            if (names.All(name => TryResolveBelow(root, name, out var file) && HasExecuteBit(file)))
+            {
+                RequireRuntimeEntryBits(root, runtime);
+                return root;
+            }
             var launch = root;
             if (IsPackageCache(root))
             {
@@ -252,7 +353,7 @@ namespace GameDirector.Unity.Editor
                 var key = "runtime";
                 try
                 {
-                    var manifestPath = Path.Combine(root, "gamedirector.runtime.json");
+                    var manifestPath = Path.Combine(root, RuntimeManifestFile);
                     if (File.Exists(manifestPath))
                     {
                         using var sha = SHA256.Create();
@@ -260,24 +361,23 @@ namespace GameDirector.Unity.Editor
                     }
                 }
                 catch (IOException) { }
-                launch = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDirector", "RuntimeMirror", key);
+                launch = Path.Combine(GameDirectorPaths.RuntimeMirror(), key);
                 Directory.CreateDirectory(Path.GetDirectoryName(launch));
                 // Serializes publishers in separate Unity editors. The OS
                 // releases the lock after a crash; the file itself may remain.
                 using var mirrorLock = new FileStream(launch + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-                var marker = Path.Combine(launch, ".complete");
                 // Publish a complete fresh directory, never copy through paths
                 // in a damaged existing mirror. Preserve old content separately
                 // instead of following its links or deleting user-added files.
-                var reusable = File.Exists(marker) && File.Exists(Executable(launch)) && VerifyDeclaredHashes(launch, runtime, out _);
+                var reusable = IsReusableMirror(launch, runtime);
                 if (!reusable)
                 {
                     var staging = launch + ".staging-" + Guid.NewGuid().ToString("N");
                     CopyDirectory(root, staging);
                     ChmodExecutables(staging, runtime);
                     if (!VerifyDeclaredHashes(staging, runtime, out var mirrorError))
-                        throw new InvalidOperationException("工作台运行组件镜像未通过完整性校验：" + mirrorError + "。诊断目录：" + staging);
-                    File.WriteAllText(Path.Combine(staging, ".complete"), DateTime.UtcNow.ToString("o") + Environment.NewLine);
+                        throw new InvalidOperationException(DirectorUi.T("mirrorIntegrity", mirrorError, staging));
+                    File.WriteAllText(Path.Combine(staging, GameDirectorPaths.RuntimeMirrorMarkerFile), DateTime.UtcNow.ToString("o") + Environment.NewLine);
                     if (Directory.Exists(launch)) Directory.Move(launch, launch + ".previous-" + Guid.NewGuid().ToString("N"));
                     Directory.Move(staging, launch);
                 }
@@ -286,54 +386,64 @@ namespace GameDirector.Unity.Editor
             {
                 ChmodExecutables(root, runtime);
             }
-            if (!HasExecuteBit(Executable(launch)))
-                throw new InvalidOperationException("无法赋予工作台程序执行权限：" + Executable(launch) + "。请检查系统安全设置后重试。");
+            RequireRuntimeEntryBits(launch, runtime);
             return launch;
+        }
+
+        private static bool IsReusableMirror(string root, JObject runtime)
+        {
+            try
+            {
+                var path = Path.Combine(root, RuntimeManifestFile);
+                return File.Exists(Path.Combine(root, GameDirectorPaths.RuntimeMirrorMarkerFile)) && File.Exists(path) &&
+                    JToken.DeepEquals(JObject.Parse(File.ReadAllText(path)), runtime) && File.Exists(Executable(root)) &&
+                    VerifyDeclaredHashes(root, runtime, out _);
+            }
+            catch (Exception) { return false; } // A damaged mirror is cache, not authoritative input.
         }
 
         private static void ChmodExecutables(string root, JObject runtime)
         {
             var names = runtime?["executables"]?.Values<string>().Where(n => !string.IsNullOrEmpty(n)).ToArray()
                 ?? new[] { Path.GetFileName(Executable(root)) };
-            foreach (var name in names)
+            var files = names.Select(name => {
+                if (!TryResolveBelow(root, name, out var file) || !File.Exists(file))
+                    throw new InvalidOperationException(DirectorUi.T("unsafeRuntimeExecutable") + name);
+                return file;
+            }).ToArray();
+            if (files.Length == 0) return;
+            // One batched helper, not a shell/chmod pair per file on the editor thread.
+            using var p = Process.Start(ProcessStartInfoShell("/bin/chmod", "755 " + string.Join(" ", files.Select(Quote))));
+            if (p == null) throw new InvalidOperationException(DirectorUi.T("repairStart"));
+            if (!p.WaitForExit(15000))
             {
-                if (!TryResolveBelow(root, name, out var file))
-                    throw new InvalidOperationException("运行组件清单声明了越界的可执行文件路径：" + name);
-                if (!File.Exists(file) || HasExecuteBit(file)) continue;
-                var chmod = ProcessStartInfoShell("/bin/chmod", "755 " + ShellQuote(file));
-                using var p = Process.Start(chmod);
-                if (p == null) continue;
-                if (!p.WaitForExit(15000))
-                {
-                    // Never leak a timed-out helper: kill it and reap it.
-                    try { p.Kill(); } catch (Exception) { }
-                    try { p.WaitForExit(5000); } catch (Exception) { }
-                }
+                try { p.Kill(); } catch (Exception) { }
+                try { p.WaitForExit(5000); } catch (Exception) { }
+                throw new InvalidOperationException(DirectorUi.T("repairTimeout"));
             }
+            if (p.ExitCode != 0) throw new InvalidOperationException(DirectorUi.T("repairFailed") + p.StandardError.ReadToEnd());
         }
 
-        private static bool HasExecuteBit(string path)
+        private static void RequireRuntimeEntryBits(string root, JObject runtime)
         {
-            try
-            {
-                using var p = Process.Start(ProcessStartInfoShell("/bin/sh", "-c " + ShellQuote("test -x " + ShellQuote(path))));
-                if (p == null) return true; // cannot probe; let the launch itself report
-                if (!p.WaitForExit(15000))
-                {
-                    try { p.Kill(); } catch (Exception) { }
-                    try { p.WaitForExit(5000); } catch (Exception) { }
-                    return true; // probe inconclusive; let the launch itself report
-                }
-                return p.ExitCode == 0;
-            }
-            catch (Exception) { return true; }
+            RequireExecuteBit(Executable(root));
+            if (runtime?["apps"]?["cli"] != null) RequireExecuteBit(AppExecutable(root, "cli"));
         }
+
+        private static void RequireExecuteBit(string path)
+        {
+            if (Application.platform != RuntimePlatform.WindowsEditor && !HasExecuteBit(path))
+                throw new InvalidOperationException(DirectorUi.T("notExecutable") + path);
+        }
+
+        [System.Runtime.InteropServices.DllImport("libc", EntryPoint = "access", SetLastError = true)]
+        private static extern int UnixAccess(string path, int mode);
+
+        private static bool HasExecuteBit(string path) => File.Exists(path) && UnixAccess(path, 1) == 0;
 
         private static ProcessStartInfo ProcessStartInfoShell(string file, string args) =>
             new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardOutput = true, RedirectStandardError = true };
-
-        private static string ShellQuote(string text) => "'" + text.Replace("'", "'\\''") + "'";
 
         private static void CopyDirectory(string source, string target)
         {
@@ -346,10 +456,15 @@ namespace GameDirector.Unity.Editor
 
         private static async Task<bool> Healthy(CancellationToken ct)
         {
-            try { var health = await DirectorWorkbenchClient.Call("health", null, ct); return (string)health["product"] == "GameDirector" && (int?)health["protocolVersion"] == RequiredProtocol; }
+            if (Environment.GetEnvironmentVariable("GAMEDIRECTOR_WORKBENCH") == null) return await Discover(GameDirectorPaths.ServiceDescriptor(), ct);
+            try {
+                var health = await DirectorWorkbenchClient.Call("health", null, ct);
+                if ((string)health["product"] != WorkbenchService.Product || (int?)health["protocolVersion"] != WorkbenchService.ProtocolVersion) return false;
+                await DirectorWorkbenchClient.Call("state", null, ct); return true; // explicit env credential must authenticate too
+            }
             catch (Exception) when (!ct.IsCancellationRequested) { return false; }
         }
-        private static async Task<bool> Discover(string descriptor, CancellationToken ct)
+        internal static async Task<bool> Discover(string descriptor, CancellationToken ct)
         {
             if (!File.Exists(descriptor)) return false;
             var previous = DirectorWorkbenchClient.Address;
@@ -357,7 +472,10 @@ namespace GameDirector.Unity.Editor
             {
                 var d = JObject.Parse(File.ReadAllText(descriptor)); DirectorWorkbenchClient.Address = (string)d["address"];
                 var health = await DirectorWorkbenchClient.Call("health", null, ct);
-                if ((string)health["product"] == "GameDirector" && (int?)health["protocolVersion"] == RequiredProtocol && (string)health["instanceId"] == (string)d["instanceId"]) return true;
+                if ((string)health["product"] == WorkbenchService.Product && (int?)health["protocolVersion"] == WorkbenchService.ProtocolVersion &&
+                    !string.IsNullOrEmpty((string)d["instanceId"]) && (string)health["instanceId"] == (string)d["instanceId"] && !string.IsNullOrEmpty((string)d["token"])) {
+                    DirectorWorkbenchClient.UseDescriptor((string)d["address"], (string)d["token"]); return true;
+                }
             }
             catch (Exception) when (!ct.IsCancellationRequested) { }
             DirectorWorkbenchClient.Address = previous; return false;

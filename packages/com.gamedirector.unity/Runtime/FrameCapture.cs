@@ -43,7 +43,7 @@ namespace GameDirector.Unity
             }
             finally
             {
-                if (tex != null) Object.Destroy(tex);
+                if (tex != null) { if(Application.isPlaying)Object.Destroy(tex);else Object.DestroyImmediate(tex); }
                 camera.aspect = prevAspect;
                 camera.targetTexture = prevTarget;
                 RenderTexture.active = prevActive;

@@ -38,6 +38,60 @@ public class PlanGeneratorExtractionTests
     }
 
     [Fact]
+    public async Task DirectPersistsTheReceiptWhenTheRequestTokenIsCancelledMidGeneration()
+    {
+        // A client that times out must not cancel a paid generation: hosted, the
+        // run is bounded by server shutdown and stage timeouts, so it finishes,
+        // persists, and the same requestId replayed later returns the receipt.
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var generator = new CountingGenerator(ctx => FilmCompiler.Starter(ctx.Manifest));
+        var director = new ApiDirector(_ => new GatedGenerator(generator, entered, release));
+        director.Configure(new ProviderSettings("http://127.0.0.1:9/v1/chat/completions", "test-model", ""));
+        await using var rig = await ServiceRig.Start(null);
+        var request = new DirectRequest("proj", "a short portrait", null, false, "direct-cancel");
+        using var requestCts = new CancellationTokenSource();
+        var pending = director.Direct(request, rig.Studio, rig.Decisions, requestCts.Token);
+        await entered.Task.WaitAsync(TestBudget.Hang);
+        requestCts.Cancel(); // the HTTP client gave up mid-generation
+        release.TrySetResult(); // the model still finished
+        var result = await pending;
+        Assert.Equal(DslJson.Serialize(result), DslJson.Serialize(await director.Direct(request, rig.Studio, rig.Decisions, CancellationToken.None)));
+        Assert.Equal(1, generator.Calls);
+        Assert.True(File.Exists(Path.Combine(rig.Studio.StorePath("proposals", "proj"), "direct-cancel.json")));
+        await director.Direct(request, rig.Studio, rig.Decisions, CancellationToken.None);
+        Assert.Equal(1, generator.Calls); // replay returns the persisted proposal for free
+    }
+
+    [Fact]
+    public async Task ServerShutdownStillBoundsDirectGeneration()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var generator = new CountingGenerator(ctx => FilmCompiler.Starter(ctx.Manifest));
+        using var stopping = new CancellationTokenSource();
+        var director = new ApiDirector(_ => new GatedGenerator(generator, entered, release), stopping.Token);
+        director.Configure(new ProviderSettings("http://127.0.0.1:9/v1/chat/completions", "test-model", ""));
+        await using var rig = await ServiceRig.Start(null);
+        var pending = director.Direct(new DirectRequest("proj", "portrait", null, false, "shutdown"), rig.Studio, null, CancellationToken.None);
+        await entered.Task.WaitAsync(TestBudget.Hang);
+        stopping.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        Assert.False(File.Exists(rig.Studio.StorePath("proposals", "proj", "shutdown.json")));
+    }
+
+    private sealed class GatedGenerator(IPlanGenerator inner, TaskCompletionSource entered, TaskCompletionSource release) : IPlanGenerator
+    {
+        public async Task<FilmPlan> Generate(PlanGenerationRequest request, PlanGenerationContext context, CancellationToken ct)
+        {
+            entered.TrySetResult();
+            await release.Task.WaitAsync(ct); // obey the actual production token, not just the test gate
+            ct.ThrowIfCancellationRequested();
+            return await inner.Generate(request, context, ct);
+        }
+    }
+
+    [Fact]
     public async Task DirectDedupesAndRejectsChangedInputs()
     {
         var provider = new TestRig.FakeProvider(Array.Empty<DecisionAnswer>());
@@ -48,7 +102,7 @@ public class PlanGeneratorExtractionTests
         var second = await director.Direct(request, rig.Studio, rig.Decisions, CancellationToken.None);
         Assert.Equal(1, generator.Calls); // persisted proposal replayed, generator not re-asked
         var changed = request with { Brief = "a different story" };
-        await Assert.ThrowsAsync<InvalidOperationException>(() => director.Direct(changed, rig.Studio, rig.Decisions, CancellationToken.None));
+        await Assert.ThrowsAsync<RequestConflictFault>(() => director.Direct(changed, rig.Studio, rig.Decisions, CancellationToken.None));
         Assert.Equal(1, generator.Calls);
     }
 
@@ -153,11 +207,12 @@ public class PlanGeneratorExtractionTests
         rig.Calibrate(p => p.PerformanceMatch.MinConfidence = 0.5);
         var result = await director.Direct(new DirectRequest("proj", "a short portrait", null, true, "direct-4"), rig.Studio, rig.Decisions, CancellationToken.None);
         Assert.Equal(0, provider.Calls);
-        var job = (ProductionJob)result.GetType().GetProperty("job")!.GetValue(result)!;
-        Assert.Equal("Queued", job.State);
+        var job = System.Text.Json.JsonSerializer.SerializeToNode(result, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!["job"]!;
+        Assert.Equal("Queued", job["state"]!.GetValue<string>());
+        Assert.Equal("cancel", job["actions"]!.AsArray().Single()!.GetValue<string>());
         // Direct production submission likewise has no decision dependency.
         var submitted = await rig.Studio.Submit(new ProductionRequest { ProjectId = "proj", RequestId = "plain-1", Film = FilmCompiler.Starter(rig.Manifest) }, CancellationToken.None);
-        Assert.Equal("Queued", submitted.State);
+        Assert.Equal(ProductionJobState.Queued, submitted.State);
         Assert.Equal(0, provider.Calls);
     }
 
@@ -192,7 +247,7 @@ public class PlanGeneratorExtractionTests
         var manifest = TestRig.Manifest(Path.GetTempPath());
         var handler = new TestRig.RecordingHandler(TestRig.Json("""{"choices":[{"message":{"content":"{\"error\":\"the brief needs a crane this stage cannot bind\"}"}}]}"""));
         var generator = new ChatCompletionsPlanGenerator(new ProviderSettings("http://127.0.0.1:9/v1/chat/completions", "test-model", ""), handler);
-        await Assert.ThrowsAsync<NotSupportedException>(() => generator.Generate(new PlanGenerationRequest("crane shot", null),
+        await Assert.ThrowsAsync<InvalidInputFault>(() => generator.Generate(new PlanGenerationRequest("crane shot", null),
             new PlanGenerationContext(manifest, Array.Empty<MediaAsset>(), null, _ => null), CancellationToken.None));
         Assert.Equal(1, handler.Calls); // declared incapability is not repaired away
     }
@@ -201,8 +256,8 @@ public class PlanGeneratorExtractionTests
     public async Task GeneratorTimeoutIsBounded()
     {
         var manifest = TestRig.Manifest(Path.GetTempPath());
-        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); });
-        var generator = new ChatCompletionsPlanGenerator(new ProviderSettings("http://127.0.0.1:9/v1/chat/completions", "test-model", ""), handler, TimeSpan.FromMilliseconds(100));
+        var handler = new TestRig.RecordingHandler(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new UnreachableException(); }); // timing-under-test: the model must never answer, so only the generator's own budget can end the call
+        var generator = new ChatCompletionsPlanGenerator(new ProviderSettings("http://127.0.0.1:9/v1/chat/completions", "test-model", ""), handler, TimeSpan.FromMilliseconds(100)); // timing-under-test: the 100 ms generator budget is the subject
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => generator.Generate(new PlanGenerationRequest("portrait", null),
             new PlanGenerationContext(manifest, Array.Empty<MediaAsset>(), null, _ => null), CancellationToken.None));
     }

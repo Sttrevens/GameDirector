@@ -1,0 +1,26 @@
+{
+  "game": "Stardeck synthetic cue contract",
+  "gameVersion": "compiler-fixture-1",
+  "manifestVersion": "0.1",
+  "roles": [
+    { "id": "bolt", "kind": "hero", "defaultActor": "robot-yellow", "presentAtStart": true },
+    { "id": "pip", "kind": "npc", "defaultActor": "robot-red", "presentAtStart": false }
+  ],
+  "actors": [
+    { "id": "robot-yellow", "clips": ["Idle", "Wave"] },
+    { "id": "robot-red", "clips": ["Idle", "Wave"] }
+  ],
+  "locations": [
+    { "id": "bolt_start", "position": [0, 0, 9] },
+    { "id": "pip_start", "position": [0, 0, -9] },
+    { "id": "cam_back_wide", "position": [0, 2.4, 13.6] }
+  ],
+  "audio": [{ "id": "stardeck-beep", "kind": "sfx" }],
+  "shotTypes": ["lockoff"],
+  "frameTypes": ["wide"],
+  "capabilities": {
+    "director.mode": "offline-sandbox",
+    "actor.spawn": "supported",
+    "fixture.networking": "synthetic-local"
+  }
+}

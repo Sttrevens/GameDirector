@@ -2,18 +2,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using GameDirector.Client;
+using GameDirector.Core.Dsl;
 using Xunit;
 
 namespace GameDirector.Core.Tests;
 
 [Collection("DistributionEnv")]
-public class RuntimeIntegrityBoundaryTests
+public class RuntimeIntegrityBoundaryTests : TempPaths
 {
     [Fact]
     public void UnchangedNativeHostDoesNotHideModifiedManagedProgram()
     {
-        var root = Path.Combine(Path.GetTempPath(), "gd-runtime-boundary-" + Guid.NewGuid().ToString("N"));
-        var folder = Path.Combine(root, "workbench");
+        var root = TempPath("gd-runtime-boundary-");
+        var folder = Path.Combine(root, "bin");
         Directory.CreateDirectory(folder);
         var previous = Environment.GetEnvironmentVariable(DistributionManifest.RootOverrideVariable);
         try
@@ -22,16 +23,18 @@ public class RuntimeIntegrityBoundaryTests
             var extension = OperatingSystem.IsWindows() ? ".exe" : "";
             var executable = "test-workbench" + extension;
             File.WriteAllText(Path.Combine(root, "distribution.json"), JsonSerializer.Serialize(new {
-                schemaVersion = 1, product = "GameDirector", protocolVersion = 1,
+                schemaVersion = 1, product = WorkbenchService.Product, protocolVersion = WorkbenchService.ProtocolVersion,
                 supportedPlatforms = new[] { rid },
                 platforms = new Dictionary<string, object> { [rid] = new { executableExtension = extension } },
-                apps = new { workbench = new { folder = "workbench", executable = "test-workbench" } }
+                runtimeFolder = "bin", apps = new { workbench = new { executable = "test-workbench" } },
+                unity = new { bundledRuntimeParent = "Tools~" }
             }));
             string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
             File.WriteAllText(Path.Combine(folder, executable), "native-host");
             File.WriteAllText(Path.Combine(folder, "test-workbench.dll"), "modified-code");
             File.WriteAllText(Path.Combine(folder, "gamedirector.runtime.json"), JsonSerializer.Serialize(new {
-                product = "GameDirector", version = "1", rid, app = "workbench", protocolVersion = 1,
+                product = WorkbenchService.Product, version = "1", rid, app = "shared", protocolVersion = WorkbenchService.ProtocolVersion,
+                apps = new Dictionary<string, string> { ["workbench"] = executable },
                 sha256 = new Dictionary<string, string> { [executable] = Hash("native-host"), ["test-workbench.dll"] = Hash("original-code") }
             }));
             Environment.SetEnvironmentVariable(DistributionManifest.RootOverrideVariable, root);

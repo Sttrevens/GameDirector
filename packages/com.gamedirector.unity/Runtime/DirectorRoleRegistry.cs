@@ -3,6 +3,13 @@ using UnityEngine;
 
 namespace GameDirector.Unity
 {
+    // Registry diagnosis, not a wire classification: only Preflight translates
+    // it to StateConflict. The same fault during execution remains internal.
+    internal sealed class StageBindingException : System.InvalidOperationException
+    {
+        public StageBindingException(string message) : base(message) { }
+    }
+
     /// <summary>
     /// Scene role registry: ONE component per scene, entries map role ids to
     /// existing scene Transforms (e.g. the hero). References point at native
@@ -48,7 +55,7 @@ namespace GameDirector.Unity
                 {
                     var e = reg.entries[j];
                     if (e != null && e.roleId == roleId && e.target != null) {
-                        if (found != null) throw new System.InvalidOperationException("duplicate role id in scene: " + roleId);
+                        if (found != null) throw new StageBindingException("duplicate role id in scene: " + roleId);
                         found = e.target;
                     }
                 }

@@ -52,7 +52,7 @@ public static class UnityPackageInstaller
 
     public static Result Install(string sourcePath, string projectPath, bool apply)
     {
-        var source = Path.GetFullPath(sourcePath);
+        var source = NormalizeDirectory(sourcePath);
         var project = Path.GetFullPath(projectPath);
         if (!Directory.Exists(source)) throw new ArgumentException($"Package source does not exist: {source}");
         if (!Directory.Exists(Path.Combine(project, "Assets")) || !Directory.Exists(Path.Combine(project, "ProjectSettings")))
@@ -91,6 +91,34 @@ public static class UnityPackageInstaller
             desired[relative] = File.ReadAllBytes(file);
         }
 
+        // Full distributions carry the package source without a second runtime.
+        // Materialize its Tools~ runtime from the SAME verified bin/ in memory,
+        // so planning remains read-only and the installed package matches UPM.
+        var distributionRoot = DistributionManifest.FindRoot();
+        var layoutPath = Path.Combine(source, DistributionManifest.ManifestFileName);
+        if (!File.Exists(layoutPath) && distributionRoot != null)
+            layoutPath = Path.Combine(distributionRoot, DistributionManifest.ManifestFileName);
+        if (!File.Exists(layoutPath))
+            throw new InvalidDataException("Package source lacks a distribution manifest and complete verified Tools~/bin runtime. Use the full platform tgz or the Unity source inside a full distribution.");
+        var layout = DistributionManifest.Load(layoutPath);
+        if (distributionRoot != null)
+        {
+            if (SameSourceDirectory(source, layout.UnityPackageSource(distributionRoot)) &&
+                !Directory.Exists(Path.Combine(source, layout.UnityRuntimeFolder)))
+            {
+                RuntimeLauncher.ResolveSibling("cli"); // identical compatibility/hash gate, no execution
+                var runtimeRoot = Path.Combine(distributionRoot, layout.RuntimeFolder);
+                var runtime = RuntimeManifest.Load(Path.Combine(runtimeRoot, DistributionManifest.RuntimeManifestFileName));
+                if (runtime.UnityPackageVersion != version)
+                    throw new InvalidDataException("Bundled runtime and Unity package versions disagree.");
+                foreach (var file in SourceFiles(runtimeRoot))
+                    if (!Core.Dsl.RuntimeFilePolicy.IsOsMetadata(Path.GetFileName(file)))
+                        desired[NormalizeRelative(Path.Combine(layout.UnityRuntimeFolder, Path.GetRelativePath(runtimeRoot, file)))] = File.ReadAllBytes(file);
+            }
+        }
+        var runtimeManifest = VerifyPlannedRuntime(desired, layout, version);
+        var executablePaths = runtimeManifest.Executables.Select(n => NormalizeRelative(Path.Combine(layout.UnityRuntimeFolder, n))).ToHashSet(StringComparer.Ordinal);
+
         var conflicts = new List<Conflict>();
         var changes = new List<string>();
         foreach (var (relative, data) in desired)
@@ -106,7 +134,12 @@ public static class UnityPackageInstaller
             {
                 if (IsReparsePoint(file)) { conflicts.Add(new(relative, "installed path is a symlink")); continue; }
                 var actual = File.ReadAllBytes(file);
-                if (actual.AsSpan().SequenceEqual(data)) continue;
+                if (actual.AsSpan().SequenceEqual(data))
+                {
+                    if (!OperatingSystem.IsWindows() && executablePaths.Contains(relative) && File.GetUnixFileMode(file) != ExecutableMode)
+                        changes.Add(relative); // permission repair is a write, even when bytes match
+                    continue;
+                }
                 if (!old.TryGetValue(relative, out var recorded) || Digest(actual) != recorded)
                 {
                     conflicts.Add(new(relative, "preserved local package edit"));
@@ -142,12 +175,62 @@ public static class UnityPackageInstaller
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
                 WriteAtomic(file, desired[relative]);
             }
+            if (!OperatingSystem.IsWindows())
+                foreach (var relative in executablePaths)
+                {
+                    var file = Path.Combine(target, RelativeToNative(relative));
+                    if (File.GetUnixFileMode(file) != ExecutableMode) File.SetUnixFileMode(file, ExecutableMode);
+                }
             foreach (var relative in removed) File.Delete(Path.Combine(target, RelativeToNative(relative)));
             if (receiptChanged) WriteAtomic(receipt, receiptData);
         }
         return new(name, version, target, apply ? "installed" : "plan",
             changes.ToArray(), removed.ToArray(), receiptChanged,
             changes.Count + removed.Count + (receiptChanged ? 1 : 0));
+    }
+
+    private const UnixFileMode ExecutableMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+        UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+
+    private static string NormalizeDirectory(string path) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)));
+
+    private static bool SameSourceDirectory(string actual, string expected)
+    {
+        expected = NormalizeDirectory(expected);
+        if (actual == expected) return true;
+        if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase)) return false;
+        // Read-only probe of this filesystem, not an OS assumption. A second
+        // spelling resolves only on a case-insensitive volume; an actual file
+        // with that spelling on a case-sensitive volume does not qualify.
+        var probe = Path.Combine(expected, "PACKAGE.JSON");
+        return File.Exists(probe) && !Directory.EnumerateFiles(expected).Any(p => Path.GetFileName(p) == "PACKAGE.JSON");
+    }
+
+    private static RuntimeManifest VerifyPlannedRuntime(SortedDictionary<string, byte[]> desired, DistributionManifest layout, string version)
+    {
+        var prefix = NormalizeRelative(layout.UnityRuntimeFolder) + "/";
+        if (!desired.TryGetValue(prefix + DistributionManifest.RuntimeManifestFileName, out var bytes))
+            throw new InvalidDataException("Install refused: package would lack a complete verified " + prefix + "runtime. Use the full platform tgz or the Unity source inside a full distribution.");
+        var runtime = RuntimeManifest.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+        runtime.ValidateDeclaredPaths();
+        var mismatch = runtime.CompatibilityFailure(DistributionManifest.CurrentRid(), Core.Dsl.WorkbenchService.ProtocolVersion);
+        if (mismatch != null || runtime.App != "shared" || runtime.UnityPackageVersion != version || runtime.Version != version ||
+            layout.Apps.Keys.Any(app => !runtime.Apps.ContainsKey(app)))
+            throw new InvalidDataException("Install refused: bundled runtime is incomplete or incompatible: " + (mismatch ?? "apps/layout/package version mismatch"));
+        foreach (var name in runtime.Apps.Values.Concat(runtime.Executables))
+            if (!runtime.Sha256.ContainsKey(name)) throw new InvalidDataException("Install refused: runtime entry is not hash-declared: " + name);
+        foreach (var (name, hash) in runtime.Sha256)
+            if (!desired.TryGetValue(prefix + name, out var data) || Digest(data) != hash)
+                throw new InvalidDataException("Install refused: runtime file is missing or corrupted: " + name);
+        foreach (var path in desired.Keys.Where(p => p.StartsWith(prefix, StringComparison.Ordinal)))
+        {
+            var name = path[prefix.Length..];
+            if (name != DistributionManifest.RuntimeManifestFileName && name != Core.Dsl.GameDirectorPaths.RuntimeMirrorMarkerFile &&
+                !Core.Dsl.RuntimeFilePolicy.IsOsMetadata(Path.GetFileName(name)) && !runtime.Sha256.ContainsKey(name))
+                throw new InvalidDataException("Install refused: runtime file is not declared: " + name);
+        }
+        return runtime;
     }
 
     /// <summary>Parse the receipt left by a previous install (Python or .NET).
@@ -234,7 +317,7 @@ public static class UnityPackageInstaller
         try
         {
             if (!File.Exists(path) && !Directory.Exists(path)) return false;
-            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+            return RuntimeManifest.IsLink(path);
         }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }

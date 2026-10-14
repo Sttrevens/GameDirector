@@ -101,7 +101,7 @@ public sealed class MediaDistributions
             throw new InvalidDataException($"media strategy '{id}' is incomplete (lacks {string.Join(", ", missing)}); incomplete bundles are never advertised or installed");
     }
 
-    public static MediaDistributions Load(string path) => Parse(File.ReadAllText(path));
+    public static MediaDistributions Load(string path) => StoredJson.Diagnose(() => Parse(File.ReadAllText(path)));
 
     /// <summary>The copy shipped next to the running app (publish layout).</summary>
     public static MediaDistributions LoadBundled() => Load(Path.Combine(AppContext.BaseDirectory, ManifestFileName));
@@ -126,7 +126,9 @@ public sealed class MediaDistributions
 }
 
 /// <summary>A user-supplied offline bundle descriptor: every tool of the unit,
-/// each with a pinned SHA-256, optionally inside one pinned archive.</summary>
+/// each with a pinned SHA-256, optionally inside one pinned archive. These hashes
+/// prove byte integrity, NOT provenance: the local user choosing this descriptor
+/// explicitly authorizes execution of its staged binaries.</summary>
 public sealed class MediaBundleDescriptor
 {
     public int SchemaVersion { get; init; }
@@ -176,6 +178,24 @@ public sealed class MediaBundleDescriptor
         return descriptor;
     }
 
+    public static string RequireFile(string path)
+    {
+        var full = Path.GetFullPath(path);
+        // Canonicalize only the OS-provided temp root (macOS /var is an alias),
+        // never a user-selected descendant; links in that descendant are refused.
+        var temp = Path.TrimEndingDirectorySeparator(Path.GetTempPath());
+        if (OutputPolicy.Contains(temp, full)) full = Path.Combine(OutputPolicy.Physical(temp), Path.GetRelativePath(temp, full));
+        var file = new FileInfo(full);
+        var invalid = "Choose a non-empty regular file without links for the bundle descriptor: " + full;
+        if (file.LinkTarget != null || !file.Exists || (file.Attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint | FileAttributes.Device)) != 0 || file.Length == 0)
+            throw new ArgumentException(invalid);
+        for (var dir = file.Directory; dir != null; dir = dir.Parent)
+            if (dir.LinkTarget != null || (dir.Attributes & FileAttributes.ReparsePoint) != 0) throw new ArgumentException(invalid);
+        // FIFOs, sockets and devices have no descriptor bytes (length zero);
+        // refuse before opening so even a FIFO cannot block the installer.
+        return full;
+    }
+
     internal static bool IsSha256(string? value) =>
         value != null && System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-f0-9]{64}$");
 
@@ -207,9 +227,7 @@ public static class MediaBundleInstaller
     public static async Task<Receipt> Install(string descriptorPath, string currentRid, MediaDistributions.UnitLayout unit,
         string targetFolder, Action<string> log, CancellationToken ct, ValidateStaged? validateStaged = null)
     {
-        var descriptorFullPath = Path.GetFullPath(descriptorPath);
-        if (!File.Exists(descriptorFullPath))
-            throw new FileNotFoundException($"bundle descriptor does not exist: {descriptorFullPath}");
+        var descriptorFullPath = MediaBundleDescriptor.RequireFile(descriptorPath);
         var descriptor = MediaBundleDescriptor.Parse(await File.ReadAllTextAsync(descriptorFullPath, ct), currentRid, unit);
         var receipt = await InstallDescriptor(descriptor, Path.GetDirectoryName(descriptorFullPath)!, unit, targetFolder, log, ct, validateStaged);
         return receipt with { Descriptor = descriptorFullPath };
@@ -307,7 +325,7 @@ public static class MediaBundleInstaller
                     { failures.Add(restoreError); }
                 }
                 if (failures.Count > 0)
-                    throw new IOException("Media activation failed and recovery needs attention; previous files are preserved in " + backup,
+                    throw new StoreIntegrityException("Media activation failed and recovery needs attention; previous files are preserved in " + backup,
                         new AggregateException(new[] { activationError }.Concat(failures)));
                 throw;
             }
@@ -330,7 +348,7 @@ public static class MediaBundleInstaller
     private static Task ValidateStagedUnit(IReadOnlyDictionary<string, string> staged, CancellationToken ct)
     {
         if (!staged.TryGetValue("ffmpeg", out var ffmpeg) || !staged.TryGetValue("ffprobe", out var ffprobe))
-            throw new InvalidOperationException("The built-in capability check requires the ffmpeg+ffprobe install unit.");
+            throw new StoreIntegrityException("The built-in capability check requires the ffmpeg+ffprobe install unit.");
         return MediaTools.EnsureEncoding(MediaProfile.Default, true, ffmpeg, ffprobe, ct);
     }
 

@@ -7,13 +7,9 @@ namespace GameDirector.Unity
     /// Scene location registry: ONE component per scene, locations are its child
     /// GameObjects (name = location id, pose = child transform).
     ///
-    /// Why a registry instead of one marker component per location: CDREBIRTH
-    /// serializes scenes in BINARY mode, and multiple MonoBehaviours of the same
-    /// scripted type in one binary scene can collide on local fileIDs and get
-    /// silently dropped on load (observed 2026-08-26: 3 of 5 anchors lost per
-    /// save/reload round-trip). Native components (Transform) and object
-    /// references are unaffected, so children-as-locations plus a single
-    /// scripted registry is collision-proof by construction.
+    /// A single registry keeps location authoring lightweight: each child
+    /// Transform supplies the id and pose without requiring another script
+    /// component. Location ids must be unique within the director scene.
     /// </summary>
     public sealed class DirectorLocationRegistry : MonoBehaviour
     {
@@ -50,7 +46,7 @@ namespace GameDirector.Unity
                 if (reg == null || !reg.isActiveAndEnabled || (scene.HasValue && reg.gameObject.scene != scene.Value)) continue;
                 var child = reg.transform.Find(id);
                 if (child == null) continue;
-                if (found) throw new System.InvalidOperationException("duplicate location id in scene: " + id);
+                if (found) throw new StageBindingException("duplicate location id in scene: " + id);
                 found = true;
                 pos = child.position;
                 headingDeg = child.eulerAngles.y;

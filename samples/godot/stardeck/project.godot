@@ -1,0 +1,22 @@
+config_version=5
+
+[application]
+config/name="Stardeck · GameDirector"
+run/main_scene="res://stage.tscn"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/size/window_width_override=960
+window/size/window_height_override=540
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+
+[importer_defaults]
+scene={"meshes/ensure_tangents": false}
+
+[editor_plugins]
+enabled=PackedStringArray("res://addons/gamedirector/plugin.cfg")

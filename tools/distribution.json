@@ -3,6 +3,9 @@
   "product": "GameDirector",
   "protocolVersion": 1,
   "comment": "Single declarative distribution manifest. Consumed by tools/gamedirector_dist.py (packaging) and by the shipped runtime (GameDirector.Client.DistributionManifest) from the copy staged at the distribution root. Version numbers are NOT stored here: the release version comes from Directory.Build.props and the Unity package version from packages/com.gamedirector.unity/package.json; packaging asserts they agree.",
+  "runtimeFolder": "bin",
+  "archiveName": "gamedirector-{version}-{rid}.{archive}",
+  "godotArchiveName": "gamedirector-godot-{version}.zip",
   "supportedPlatforms": [
     "win-x64",
     "osx-arm64",
@@ -52,17 +55,14 @@
   "apps": {
     "cli": {
       "project": "src/GameDirector.Cli",
-      "folder": "cli",
       "executable": "gd"
     },
     "mcp": {
       "project": "src/GameDirector.Mcp",
-      "folder": "mcp",
       "executable": "gamedirector-mcp"
     },
     "workbench": {
       "project": "src/GameDirector.Workbench",
-      "folder": "workbench",
       "executable": "gamedirector-workbench"
     }
   },
@@ -70,7 +70,8 @@
     "packageSource": "packages/com.gamedirector.unity",
     "packageName": "com.gamedirector.unity",
     "packageVersionFile": "packages/com.gamedirector.unity/package.json",
-    "bundledRuntimeFolder": "Tools~/Workbench",
+    "bundledRuntimeParent": "Tools~",
+    "archiveName": "{packageName}-{version}-{rid}.tgz",
     "mediaDataFolder": "Tools~/media",
     "distributionFolder": "unity/com.gamedirector.unity"
   },

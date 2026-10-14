@@ -1,4 +1,5 @@
 using System.Text;
+using GameDirector.Core.Dsl;
 using System.Text.Json.Nodes;
 
 namespace GameDirector.Client;
@@ -36,6 +37,16 @@ public sealed class EditRange
     public string Beat { get; set; }="";
 }
 
+/// <summary>FFmpeg afade treats d=0 as "use the default" (~0.92 s at 48 kHz),
+/// not as "no fade": a zero-length fade must omit the filter, or every default
+/// cue loses its attack. Chains are composed without empty segments.</summary>
+internal static class AudioFilters
+{
+    public static string? Fade(string type, double start, double duration) =>
+        duration <= 0 ? null : $"afade=t={type}:st={MediaTools.Number(start)}:d={MediaTools.Number(duration)}";
+    public static string Chain(params string?[] filters) => string.Join(",", filters.Where(f => !string.IsNullOrEmpty(f)));
+}
+
 /// <summary>Game-neutral, inspectable EDL. Decode/grade each selected range once,
 /// losslessly concatenate, then mix soundtrack and apply final typography.</summary>
 public static class EditRenderer
@@ -47,10 +58,11 @@ public static class EditRenderer
         if(plan.Ranges==null || plan.Ranges.Count==0)throw new ArgumentException("edit requires ranges");
         foreach(var r in plan.Ranges) {
             if(r==null || !durations.TryGetValue(r.Source,out var duration))throw new ArgumentException("unknown source");
-            if(!double.IsFinite(r.Start) || !double.IsFinite(r.End) || r.Start<0 || r.End<=r.Start || r.End>duration+.00001)
+            if(!double.IsFinite(r.Start) || !double.IsFinite(r.End) || r.Start<0 || r.End<=r.Start || r.End>duration+FrameClock.AlignmentToleranceFrames/plan.FrameRate)
                 throw new ArgumentException("range is outside source duration");
-            if(Math.Abs(r.Start*plan.FrameRate-Math.Round(r.Start*plan.FrameRate))>.0001 || Math.Abs(r.End*plan.FrameRate-Math.Round(r.End*plan.FrameRate))>.0001)
+            if(!FrameClock.IsAligned(r.Start,plan.FrameRate) || !FrameClock.IsAligned(r.End,plan.FrameRate))
                 throw new ArgumentException("edit boundaries must align to output frames");
+            if(FrameClock.Snap(r.End,plan.FrameRate)<=FrameClock.Snap(r.Start,plan.FrameRate))throw new ArgumentException("range must contain at least one frame");
             if(string.IsNullOrWhiteSpace(r.Reason))throw new ArgumentException("each cut requires an editorial reason");
         }
         if(!double.IsFinite(plan.MusicVolume) || plan.MusicVolume<0 || plan.MusicVolume>GameDirector.Core.Dsl.FilmLimits.MaxVolume)throw new ArgumentException("invalid music volume");
@@ -59,8 +71,8 @@ public static class EditRenderer
     {
         profile??=MediaProfile.Default;
         planPath=Path.GetFullPath(planPath);output=OutputPolicy.RequireOutput(output);
-        if(Directory.Exists(output))throw new IOException("edit output exists; choose a new version directory");
-        var plan=DslJson.Load<EditPlan>(planPath);var root=Path.GetDirectoryName(planPath)!;
+        if(Directory.Exists(output))throw new StateConflictException("edit output exists; choose a new version directory");
+        var plan=DslJson.LoadAuthored<EditPlan>(planPath);var root=Path.GetDirectoryName(planPath)!;
         await MediaTools.EnsureEncoding(profile,plan.Subtitles!=null,ct);
         var sources=new Dictionary<string,string>();var durations=new Dictionary<string,double>();var audio=new Dictionary<string,bool>();
         var hashes=new Dictionary<string,string>();var receipts=new Dictionary<string,string>();
@@ -73,29 +85,29 @@ public static class EditRenderer
             hashes[pair.Key]=MediaTools.Hash(file);
             var receiptPath=Path.Combine(Path.GetDirectoryName(file)!,"take.json");
             if(File.Exists(receiptPath)) {
-                var receipt=JsonNode.Parse(File.ReadAllText(receiptPath))!;
-                if(receipt["state"]?.GetValue<string>()!="Verified" || receipt["videoSha256"]?.GetValue<string>()!=hashes[pair.Key])
-                    throw new InvalidOperationException("take changed or was not verified: "+file);
-                receipts[pair.Key]=receipt["takeId"]!.GetValue<string>();
+                var receipt=StoredJson.Load<TakeArtifact>(receiptPath);
+                if(receipt.State!=TakeJobStates.Verified || receipt.VideoSha256!=hashes[pair.Key])
+                    throw new StoreIntegrityException("take changed or was not verified: "+file);
+                receipts[pair.Key]=receipt.TakeId!;
             }
         }
         Validate(plan,durations);
         string? music=plan.Music==null?null:Path.GetFullPath(Path.Combine(root,plan.Music));
         string? subtitles=plan.Subtitles==null?null:Path.GetFullPath(Path.Combine(root,plan.Subtitles));
-        if(music!=null && !File.Exists(music) || subtitles!=null && !File.Exists(subtitles))throw new IOException("missing music/subtitle asset");
+        if(music!=null && !File.Exists(music) || subtitles!=null && !File.Exists(subtitles))throw new StoreIntegrityException("missing music/subtitle asset");
         using var decodedAudio = new NormalizedAudio();
         var soundFiles = new List<string>(); var soundHashes = new List<string>();
-        var totalDuration = plan.Ranges.Sum(r => r.End - r.Start);
+        var totalDuration = plan.Ranges.Sum(r => FrameClock.Snap(r.End,plan.FrameRate) - FrameClock.Snap(r.Start,plan.FrameRate));
         if (plan.Audio == null || plan.Audio.Count > GameDirector.Core.Dsl.FilmLimits.MaxAudioCues) throw new ArgumentException("At most " + GameDirector.Core.Dsl.FilmLimits.MaxAudioCues + " audio cues are supported.");
         foreach (var cue in plan.Audio)
         {
             if (cue == null || !double.IsFinite(cue.At) || !double.IsFinite(cue.SourceStart) || !double.IsFinite(cue.Duration) || !double.IsFinite(cue.Volume) ||
                 !double.IsFinite(cue.FadeIn) || !double.IsFinite(cue.FadeOut) || cue.At < 0 || cue.SourceStart < 0 || cue.Duration <= 0 ||
-                cue.At + cue.Duration > totalDuration + .00001 || cue.Volume < 0 || cue.Volume > GameDirector.Core.Dsl.FilmLimits.MaxVolume || cue.FadeIn < 0 || cue.FadeOut < 0 || cue.FadeIn + cue.FadeOut > cue.Duration)
+                cue.At + cue.Duration > totalDuration + FrameClock.AlignmentToleranceFrames / plan.FrameRate || cue.Volume < 0 || cue.Volume > GameDirector.Core.Dsl.FilmLimits.MaxVolume || cue.FadeIn < 0 || cue.FadeOut < 0 || cue.FadeIn + cue.FadeOut > cue.Duration)
                 throw new ArgumentException("Invalid edited-film audio cue.");
             var file = Path.GetFullPath(Path.Combine(root, cue.Source));
             var sound = await decodedAudio.Read(file, ct, profile);
-            if (cue.SourceStart + cue.Duration > sound.Duration + .00001) throw new ArgumentException("Audio cue exceeds decoded source samples.");
+            if (!MediaFormats.AudioWindowFitsSource(cue.SourceStart,cue.Duration,sound.Duration,plan.FrameRate)) throw new ArgumentException("Audio cue exceeds decoded source samples.");
             soundFiles.Add(sound.File); soundHashes.Add(MediaTools.Hash(file));
         }
         Directory.CreateDirectory(output);Directory.CreateDirectory(OutputPolicy.Child(output,"segments"));
@@ -103,18 +115,19 @@ public static class EditRenderer
         try {
             int totalFrames=0;var concat=new StringBuilder();int index=0;
             foreach(var range in plan.Ranges) {
-                var frames=(int)Math.Round((range.End-range.Start)*plan.FrameRate);totalFrames+=frames;
-                var duration=(double)frames/plan.FrameRate;
+                var start=FrameClock.Snap(range.Start,plan.FrameRate);var end=FrameClock.Snap(range.End,plan.FrameRate);
+                var frames=FrameClock.FrameCount(end-start,plan.FrameRate);totalFrames+=frames;
+                var duration=FrameClock.TimeOf(frames,plan.FrameRate);
                 var segment=OutputPolicy.Child(output,"segments",$"{index++:D3}.mov");
                 // Frame pacing belongs to the output muxer. The fps filter can
                 // discard the final decoded frame at EOF (including exact-CFR
                 // takes); an explicit output clock preserves that last frame.
                 var vf=$"setpts=PTS-STARTPTS,scale={plan.Width}:{plan.Height}:force_original_aspect_ratio=decrease,pad={plan.Width}:{plan.Height}:(ow-iw)/2:(oh-ih)/2,setsar=1";
                 if(!string.IsNullOrWhiteSpace(plan.Grade))vf+=","+plan.Grade;
-                var args=new List<string>{"-v","error","-n","-ss",MediaTools.Number(range.Start),"-i",sources[range.Source]};
+                var args=new List<string>{"-v","error","-n","-ss",MediaTools.Number(start),"-i",sources[range.Source]};
                 if(!audio[range.Source])args.AddRange(new[]{"-f","lavfi","-i","anullsrc=r="+profile.AudioSampleRate+":cl=stereo"});
                 var segmentFade=profile.SegmentFadeSeconds;
-                args.AddRange(new[]{"-t",MediaTools.Number(duration),"-map","0:v:0","-map",audio[range.Source]?"0:a:0":"1:a:0","-vf",vf,"-r",plan.FrameRate.ToString(),"-fps_mode","cfr","-frames:v",frames.ToString(),"-af",$"aresample={profile.AudioSampleRate},afade=t=in:st=0:d={MediaTools.Number(segmentFade)},afade=t=out:st={MediaTools.Number(Math.Max(0,duration-segmentFade))}:d={MediaTools.Number(segmentFade)}","-c:v",profile.VideoCodec,"-preset",profile.Preset,"-crf",profile.Crf.ToString(),"-pix_fmt",profile.PixelFormat,"-c:a",profile.SegmentAudioCodec,"-ar",profile.AudioSampleRate.ToString(),"-ac",profile.AudioChannels.ToString(),"-video_track_timescale",(plan.FrameRate*1000).ToString(),segment});
+                args.AddRange(new[]{"-t",MediaTools.Number(duration),"-map","0:v:0","-map",audio[range.Source]?"0:a:0":"1:a:0","-vf",vf,"-r",plan.FrameRate.ToString(),"-fps_mode","cfr","-frames:v",frames.ToString(),"-af",AudioFilters.Chain($"aresample={profile.AudioSampleRate}",AudioFilters.Fade("in",0,segmentFade),AudioFilters.Fade("out",Math.Max(0,duration-segmentFade),segmentFade)),"-c:v",profile.VideoCodec,"-preset",profile.Preset,"-crf",profile.Crf.ToString(),"-pix_fmt",profile.PixelFormat,"-c:a",profile.SegmentAudioCodec,"-ar",profile.AudioSampleRate.ToString(),"-ac",profile.AudioChannels.ToString(),"-video_track_timescale",(plan.FrameRate*1000).ToString(),segment});
                 await MediaTools.Run("ffmpeg",args,ct);
                 await MediaTools.Verify(segment,frames,plan.FrameRate,plan.Width,plan.Height,ct);
                 // Generated simple relative paths avoid concat quoting/platform traps.
@@ -124,19 +137,20 @@ public static class EditRenderer
             var list=OutputPolicy.Child(output,"concat.txt");File.WriteAllText(list,concat.ToString());
             var picture=OutputPolicy.Child(output,"assembly.mov");
             await MediaTools.Run("ffmpeg",new[]{"-v","error","-n","-f","concat","-safe","1","-i",list,"-c","copy",picture},ct);
-            var final=OutputPolicy.Child(output,"final.mp4");var total=(double)totalFrames/plan.FrameRate;
+            var final=OutputPolicy.Child(output,"final.mp4");var total=FrameClock.TimeOf(totalFrames,plan.FrameRate);
             var finish=new List<string>{"-v","error","-n","-i",picture};
             var filters = new List<string>(); var mix = new List<string> { "[0:a]" }; var inputIndex = 1;
             if (music != null)
             {
                 finish.AddRange(new[]{"-i",music});
-                filters.Add($"[{inputIndex++}:a]volume={MediaTools.Number(plan.MusicVolume)},apad,atrim=0:{MediaTools.Number(total)},afade=t=in:d={MediaTools.Number(profile.MusicFadeInSeconds)},afade=t=out:st={MediaTools.Number(Math.Max(0,total-profile.MusicFadeOutSeconds))}:d={MediaTools.Number(profile.MusicFadeOutSeconds)}[m]"); mix.Add("[m]");
+                var musicInput = inputIndex++;
+                filters.Add($"[{musicInput}:a]" + AudioFilters.Chain($"volume={MediaTools.Number(plan.MusicVolume)}", "apad", $"atrim=0:{MediaTools.Number(total)}", AudioFilters.Fade("in", 0, profile.MusicFadeInSeconds), AudioFilters.Fade("out", Math.Max(0, total - profile.MusicFadeOutSeconds), profile.MusicFadeOutSeconds)) + "[m]"); mix.Add("[m]");
             }
             for (var n = 0; n < plan.Audio.Count; n++)
             {
                 var cue = plan.Audio[n]; finish.AddRange(new[]{"-i",soundFiles[n]});
                 var label = "sound" + n;
-                filters.Add($"[{inputIndex++}:a]atrim=start={MediaTools.Number(cue.SourceStart)}:duration={MediaTools.Number(cue.Duration)},asetpts=PTS-STARTPTS,aresample={profile.AudioSampleRate},aformat=channel_layouts=stereo,volume={MediaTools.Number(cue.Volume)},afade=t=in:d={MediaTools.Number(cue.FadeIn)},afade=t=out:st={MediaTools.Number(cue.Duration-cue.FadeOut)}:d={MediaTools.Number(cue.FadeOut)},adelay={Math.Round(cue.At*profile.AudioSampleRate)}S:all=1[{label}]"); mix.Add("[" + label + "]");
+                filters.Add($"[{inputIndex++}:a]" + AudioFilters.Chain($"atrim=start={MediaTools.Number(cue.SourceStart)}:duration={MediaTools.Number(cue.Duration)}", "asetpts=PTS-STARTPTS", $"aresample={profile.AudioSampleRate}", "aformat=channel_layouts=stereo", $"volume={MediaTools.Number(cue.Volume)}", AudioFilters.Fade("in", 0, cue.FadeIn), AudioFilters.Fade("out", cue.Duration - cue.FadeOut, cue.FadeOut), $"adelay={Math.Round(cue.At*profile.AudioSampleRate)}S:all=1") + $"[{label}]"); mix.Add("[" + label + "]");
             }
             if (filters.Count > 0)
             {

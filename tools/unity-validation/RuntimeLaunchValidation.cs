@@ -25,19 +25,26 @@ public static class RuntimeLaunchValidation
         {
             Directory.CreateDirectory(evidence);
             var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(DirectorWorkbenchLauncher).Assembly);
-            var runtime = Path.Combine(package.resolvedPath, "Tools~", "Workbench");
+            var runtime = DirectorWorkbenchLauncher.BundledRuntimeRoot(package.resolvedPath);
             var type = typeof(DirectorWorkbenchLauncher);
             var flags = BindingFlags.NonPublic | BindingFlags.Static;
             var manifest = type.GetMethod("ValidateRuntimeManifest", flags).Invoke(null, new object[] { runtime, true });
+            type.GetMethod("VerifyRuntimeIntegrity", flags).Invoke(null, new object[] { runtime, manifest });
             runtime = (string)type.GetMethod("PrepareExecutable", flags).Invoke(null, new object[] { runtime, manifest });
+            var cli = DirectorWorkbenchLauncher.ResolveBundledCli();
+            if (!Path.IsPathFullyQualified(cli) || !File.Exists(cli)) throw new InvalidOperationException("Bundled gd is not an absolute executable path.");
+            if (cli != DirectorWorkbenchLauncher.ResolveBundledCli()) throw new InvalidOperationException("Bundled gd resolution changed unexpectedly.");
+            var config = JObject.Parse(DirectorMcpConfig.Build(cli));
+            File.WriteAllText(Path.Combine(evidence, "copied-mcp-config.json"), config.ToString());
             // Use the production launch implementation with an owned data store.
             await (Task)type.GetMethod("StartFrom", flags).Invoke(null, new object[] { runtime, Path.Combine(evidence, "store"), CancellationToken.None });
             var health = await DirectorWorkbenchClient.Call("health");
-            if ((string)health["product"] != "GameDirector") throw new InvalidOperationException("Unexpected runtime product.");
+            if ((string)health["product"] != GameDirector.Core.Dsl.WorkbenchService.Product) throw new InvalidOperationException("Unexpected runtime product.");
             File.WriteAllText(Path.Combine(evidence, "launcher-result.json"), new JObject {
-                ["passed"] = (string)health["product"] == "GameDirector",
+                ["passed"] = (string)health["product"] == GameDirector.Core.Dsl.WorkbenchService.Product,
                 ["rid"] = DirectorWorkbenchLauncher.CurrentRid(), ["health"] = health,
-                ["runtime"] = runtime
+                ["runtime"] = runtime, ["cli"] = cli, ["mcpConfig"] = config,
+                ["repeatedCliResolutionStable"] = true
             }.ToString());
             code = 0;
         }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using GameDirector.Core.Dsl;
 
 namespace GameDirector.Client;
 
@@ -20,9 +21,17 @@ public static class MediaTools
     /// environment (no login shell PATH) still finds a system install.
     /// Includes the per-user WinGet shim folder, since a Unity-launched
     /// process does not inherit a PATH that changed after Unity started.</summary>
-    private static IEnumerable<string> WellKnownFolders()
+    private static readonly string[] HomebrewPrefixes = { "/opt/homebrew", "/usr/local" };
+
+    internal static IEnumerable<string> WellKnownFolders()
     {
-        if (OperatingSystem.IsMacOS()) { yield return "/opt/homebrew/bin"; yield return "/usr/local/bin"; }
+        if (OperatingSystem.IsMacOS())
+        {
+            // Homebrew's keg-only ffmpeg-full (libass + libx264) comes first: the plain
+            // ffmpeg formula has no subtitle support, and both tools must come from one build.
+            foreach (var prefix in HomebrewPrefixes) yield return Path.Combine(prefix, "opt", "ffmpeg-full", "bin");
+            foreach (var prefix in HomebrewPrefixes) yield return Path.Combine(prefix, "bin");
+        }
         else if (OperatingSystem.IsLinux()) { yield return "/usr/local/bin"; yield return "/usr/bin"; }
         else if (OperatingSystem.IsWindows())
         {
@@ -35,9 +44,9 @@ public static class MediaTools
     public static void InvalidateCache() { lock (resolved) resolved.Clear(); }
 
     /// <summary>Per-user folder receiving bootstrap-installed tools. Writable
-    /// where the packaged app folder is not (PackageCache), survives upgrades.</summary>
-    public static string UserMediaFolder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDirector", "media");
+    /// where the packaged app folder is not (PackageCache), survives upgrades.
+    /// Resolved once in Core so every host agrees on the same per-user root.</summary>
+    public static string UserMediaFolder => GameDirectorPaths.Media();
 
     /// <summary>Resolve one tool without assuming anything about the install.</summary>
     public static MediaToolResolution Resolve(string tool)
@@ -86,11 +95,11 @@ public static class MediaTools
         if(executable is "ffmpeg" or "ffprobe") executable = Resolve(executable).Path;
         var info=new ProcessStartInfo(executable){UseShellExecute=false,CreateNoWindow=true,RedirectStandardError=true,RedirectStandardOutput=true};
         foreach(var a in args)info.ArgumentList.Add(a);
-        using var p=Process.Start(info)??throw new InvalidOperationException("could not start "+executable);
+        using var p=Process.Start(info)??throw new MediaFailureException("could not start "+executable);
         var error=p.StandardError.ReadToEndAsync(ct);var output=p.StandardOutput.ReadToEndAsync(ct);
         try{await p.WaitForExitAsync(ct);}catch{if(!p.HasExited)p.Kill(true);throw;}
         var stderr=await error;var stdout=await output;
-        if(p.ExitCode!=0)throw new InvalidOperationException(executable+" failed: "+stderr);
+        if(p.ExitCode!=0)throw new MediaFailureException(executable+" failed: "+stderr);
         return stdout;
     }
 
@@ -106,10 +115,10 @@ public static class MediaTools
         {
             var resolution=Resolve(tool);
             if(resolution.Broken)
-                throw new InvalidOperationException(resolution.Source.Split(' ')[0]+" points to '"+resolution.Path+"' which does not exist; fix the path or unset the variable.");
+                throw new MediaFailureException(resolution.Source.Split(' ')[0]+" points to '"+resolution.Path+"' which does not exist; fix the path or unset the variable.");
         }
         return EnsureEncodingCore(profile,subtitles,Resolve("ffmpeg").Path,Resolve("ffprobe").Path,
-            "set GAMEDIRECTOR_FFMPEG to a compatible executable",ct);
+            "run `gd media install` to install a compatible FFmpeg, or set GAMEDIRECTOR_FFMPEG to a compatible executable",ct);
     }
 
     /// <summary>Full contract check against two exact executables — used to prove
@@ -119,7 +128,7 @@ public static class MediaTools
     {
         foreach(var(tool,path)in new[]{("ffmpeg",ffmpegPath),("ffprobe",ffprobePath)})
             if(!File.Exists(path))
-                throw new InvalidOperationException("staged "+tool+" is missing: "+path);
+                throw new MediaFailureException("staged "+tool+" is missing: "+path);
         return EnsureEncodingCore(profile,subtitles,Path.GetFullPath(ffmpegPath),Path.GetFullPath(ffprobePath),
             "the staged ffmpeg is not a compatible executable",ct);
     }
@@ -128,18 +137,18 @@ public static class MediaTools
     {
         var encoders=await Run(ffmpegPath,new[]{"-hide_banner","-encoders"},ct);
         if(!System.Text.RegularExpressions.Regex.IsMatch(encoders,@"(?m)^\s*\S+\s+"+System.Text.RegularExpressions.Regex.Escape(profile.VideoCodec)+@"\s"))
-            throw new InvalidOperationException("FFmpeg requires the "+profile.VideoCodec+" encoder; "+encoderHint);
+            throw new MediaFailureException("FFmpeg requires the "+profile.VideoCodec+" encoder; "+encoderHint);
         var filters=profile.RequiredFilters(subtitles);
         if(filters.Count>0) {
             var font=profile.SubtitleFont.Locate();
             if (!File.Exists(font))
-                throw new InvalidOperationException("Subtitle font is missing. Reinstall the complete GameDirector runtime, including its Fonts directory.");
+                throw new MediaFailureException("Subtitle font is missing. Reinstall the complete GameDirector runtime, including its Fonts directory.");
             if (Hash(font)!=profile.SubtitleFont.Sha256)
-                throw new InvalidOperationException("Subtitle font differs from the pinned delivery. Reinstall the unmodified GameDirector runtime fonts.");
+                throw new MediaFailureException("Subtitle font differs from the pinned delivery. Reinstall the unmodified GameDirector runtime fonts.");
             var available=await Run(ffmpegPath,new[]{"-hide_banner","-filters"},ct);
             foreach(var filter in filters)
                 if(!System.Text.RegularExpressions.Regex.IsMatch(available,@"(?m)^\s*\S+\s+"+System.Text.RegularExpressions.Regex.Escape(filter)+@"\s"))
-                    throw new InvalidOperationException("This edit requires FFmpeg with "+filter+" support; "+encoderHint);
+                    throw new MediaFailureException("This edit requires FFmpeg with "+filter+" support; "+encoderHint);
         }
         await Run(ffprobePath,new[]{"-version"},ct);
     }
@@ -151,10 +160,20 @@ public static class MediaTools
         var probe=await Probe(file,ct);
         var stream=probe["streams"]!.AsArray().First(x=>x?["codec_type"]?.GetValue<string>()=="video")!;
         if(stream["width"]!.GetValue<int>()!=width || stream["height"]!.GetValue<int>()!=height || int.Parse(stream["nb_read_frames"]!.GetValue<string>())!=frames)
-            throw new InvalidOperationException("encoded dimensions or frame count differ from the take contract");
-        var rate=stream["avg_frame_rate"]!.GetValue<string>().Split('/');
-        if(Math.Abs(double.Parse(rate[0],CultureInfo.InvariantCulture)/double.Parse(rate[1],CultureInfo.InvariantCulture)-fps)>.001)
-            throw new InvalidOperationException("encoded frame rate mismatch");
+            throw new MediaFailureException("encoded dimensions or frame count differ from the take contract");
+        // ffprobe's avg_frame_rate is an exact rational: compare as integers.
+        // A float tolerance here accepts an encode that violates the contract.
+        if(!FrameRateMatches(stream["avg_frame_rate"]!.GetValue<string>(),fps))
+            throw new MediaFailureException("encoded frame rate mismatch");
         await Run("ffmpeg",new[]{"-v","error","-i",file,"-f","null","-"},ct);
+    }
+    /// <summary>ffprobe reports avg_frame_rate as an exact rational num/den; the
+    /// encoded rate must equal fps exactly (num == fps*den), with den != 0.</summary>
+    internal static bool FrameRateMatches(string? avgFrameRate,int fps) {
+        var parts=(avgFrameRate??"").Split('/');
+        return parts.Length==2
+            && System.Numerics.BigInteger.TryParse(parts[0],NumberStyles.Integer,CultureInfo.InvariantCulture,out var num)
+            && System.Numerics.BigInteger.TryParse(parts[1],NumberStyles.Integer,CultureInfo.InvariantCulture,out var den)
+            && fps>0 && num>=0 && den>0 && num==fps*den;
     }
 }

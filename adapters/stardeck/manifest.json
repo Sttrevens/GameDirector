@@ -1,0 +1,279 @@
+{
+  "game": "Stardeck",
+  "gameVersion": "example-1",
+  "manifestVersion": "0.1",
+  "roles": [
+    {
+      "id": "bolt",
+      "kind": "hero",
+      "defaultActor": "robot-yellow",
+      "presentAtStart": true
+    },
+    {
+      "id": "pip",
+      "kind": "npc",
+      "defaultActor": "robot-red",
+      "presentAtStart": true
+    }
+  ],
+  "actors": [
+    {
+      "id": "robot-yellow",
+      "clips": [
+        "Idle",
+        "Walking",
+        "Running",
+        "Wave",
+        "ThumbsUp",
+        "Yes",
+        "No",
+        "Dance",
+        "Jump",
+        "Punch",
+        "Death",
+        "Sitting",
+        "Standing",
+        "WalkJump",
+        "Surprised",
+        "Sad",
+        "Angry"
+      ]
+    },
+    {
+      "id": "robot-red",
+      "clips": [
+        "Idle",
+        "Walking",
+        "Running",
+        "Wave",
+        "ThumbsUp",
+        "Yes",
+        "No",
+        "Dance",
+        "Jump",
+        "Punch",
+        "Death",
+        "Sitting",
+        "Standing",
+        "WalkJump",
+        "Surprised",
+        "Sad",
+        "Angry"
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "bolt_start",
+      "position": [
+        0,
+        0,
+        9
+      ]
+    },
+    {
+      "id": "bolt_mark",
+      "position": [
+        0,
+        0,
+        1.6
+      ]
+    },
+    {
+      "id": "pip_start",
+      "position": [
+        0,
+        0,
+        -9
+      ]
+    },
+    {
+      "id": "pip_mark",
+      "position": [
+        0,
+        0,
+        -1.6
+      ]
+    },
+    {
+      "id": "cam_front_wide",
+      "position": [
+        0,
+        1.8,
+        -7.5
+      ]
+    },
+    {
+      "id": "cam_back_wide",
+      "position": [
+        0,
+        2.4,
+        13.6
+      ]
+    },
+    {
+      "id": "cam_low_side",
+      "position": [
+        2.4,
+        0.35,
+        6
+      ]
+    },
+    {
+      "id": "cam_side_left",
+      "position": [
+        -3.2,
+        1.25,
+        0
+      ]
+    },
+    {
+      "id": "cam_side_right",
+      "position": [
+        3.2,
+        1.25,
+        0
+      ]
+    },
+    {
+      "id": "cam_high",
+      "position": [
+        0,
+        4.4,
+        6.8
+      ]
+    },
+    {
+      "id": "cam_ots_bolt",
+      "position": [
+        1.5,
+        2.1,
+        6.4
+      ]
+    },
+    {
+      "id": "cam_ots_pip",
+      "position": [
+        -1.0,
+        1.6,
+        -4.6
+      ]
+    },
+    {
+      "id": "cam_low_front",
+      "position": [
+        0.6,
+        0.3,
+        -1.0
+      ]
+    },
+    {
+      "id": "cam_turn",
+      "position": [
+        0,
+        1.3,
+        4.6
+      ]
+    },
+    {
+      "id": "bolt_dance",
+      "position": [
+        0,
+        0,
+        0.9
+      ]
+    },
+    {
+      "id": "pip_dance",
+      "position": [
+        0,
+        0,
+        -0.9
+      ]
+    },
+    {
+      "id": "cam_single_bolt",
+      "position": [
+        1.3,
+        1.45,
+        -0.7
+      ]
+    },
+    {
+      "id": "cam_single_pip",
+      "position": [
+        -1.3,
+        1.45,
+        0.7
+      ]
+    },
+    {
+      "id": "cam_wide_side",
+      "position": [
+        3.4,
+        2.0,
+        0
+      ]
+    },
+    {
+      "id": "cam_turn_bolt",
+      "position": [
+        0,
+        1.25,
+        12.4
+      ]
+    },
+    {
+      "id": "cam_turn_pip",
+      "position": [
+        0,
+        1.25,
+        -12.4
+      ]
+    },
+    {
+      "id": "cam_moves",
+      "position": [
+        0,
+        1.15,
+        5.2
+      ]
+    },
+    {
+      "id": "cam_fly_start",
+      "position": [
+        0,
+        5.2,
+        14.2
+      ]
+    },
+    {
+      "id": "cam_fly_end",
+      "position": [
+        0,
+        2.6,
+        3.0
+      ]
+    }
+  ],
+  "audio": [],
+  "shotTypes": [
+    "lockoff",
+    "dolly",
+    "crane",
+    "orbit",
+    "tracking"
+  ],
+  "frameTypes": [
+    "extreme-closeup",
+    "closeup",
+    "medium",
+    "full",
+    "wide"
+  ],
+  "capabilities": {
+    "director.mode": "offline-sandbox",
+    "actor.animation.fade": "crossfade",
+    "actor.spawn": "unsupported"
+  }
+}

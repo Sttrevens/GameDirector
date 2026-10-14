@@ -11,7 +11,7 @@ namespace GameDirector.Core.Tests;
 /// are rejected up front, hashes gate every byte installed, and archives are
 /// extracted by declared layout only.</summary>
 [Collection("DistributionEnv")]
-public class MediaDistributionTests
+public class MediaDistributionTests : TempPaths
 {
     private static readonly MediaDistributions.UnitLayout Unit =
         new() { Tools = new[] { "ffmpeg", "ffprobe" } };
@@ -29,6 +29,15 @@ public class MediaDistributionTests
     }
 
     [Fact]
+    public void MacProbesHomebrewFfmpegFullBeforePlainHomebrewBin()
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+        var folders = MediaTools.WellKnownFolders().ToList();
+        Assert.True(folders.IndexOf("/opt/homebrew/opt/ffmpeg-full/bin") < folders.IndexOf("/opt/homebrew/bin"));
+        Assert.True(folders.IndexOf("/usr/local/opt/ffmpeg-full/bin") < folders.IndexOf("/usr/local/bin"));
+    }
+
+    [Fact]
     public void BundledManifestIsCompleteAndHonest()
     {
         var manifest = MediaDistributions.Load(BundledManifestPath());
@@ -37,6 +46,8 @@ public class MediaDistributionTests
         // brew/winget stay as the supported complete package-manager strategies.
         Assert.Contains(manifest.Strategies, s => s.Id == "winget-ffmpeg" && s.Provides.Contains("ffprobe"));
         Assert.Contains(manifest.Strategies, s => s.Id == "brew-ffmpeg" && s.Provides.Contains("ffprobe"));
+        // Homebrew's plain ffmpeg formula has no libass; only ffmpeg-full renders captions.
+        Assert.Equal(new[] { "install", "ffmpeg-full" }, manifest.Strategies.Single(s => s.Id == "brew-ffmpeg").Args);
         // No curated download is advertised until one is hash-verified complete;
         // crucially the old ffmpeg-only Mac pin is gone.
         Assert.DoesNotContain(manifest.Downloads, d => !d.Files.Keys.Contains("ffprobe"));
@@ -84,9 +95,9 @@ public class MediaDistributionTests
 
     private static string Sha(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
 
-    private static (string folder, string descriptorPath) MakeBundle(byte[] ffmpeg, byte[] ffprobe, bool tamper = false)
+    private (string folder, string descriptorPath) MakeBundle(byte[] ffmpeg, byte[] ffprobe, bool tamper = false)
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-bundle-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-bundle-");
         Directory.CreateDirectory(folder);
         File.WriteAllBytes(Path.Combine(folder, "ffmpeg-bin"), ffmpeg);
         File.WriteAllBytes(Path.Combine(folder, "ffprobe-bin"), ffprobe);
@@ -116,6 +127,51 @@ public class MediaDistributionTests
         if (!Directory.Exists(target)) return;
         Assert.Empty(Directory.EnumerateDirectories(target)
             .Where(d => Path.GetFileName(d).StartsWith(".staging") || Path.GetFileName(d).StartsWith(".backup")));
+    }
+
+    [Fact]
+    public async Task LinkedDescriptorIsRejectedBeforeStagingOrExecution()
+    {
+        if (OperatingSystem.IsWindows()) return; // symlink creation requires privileges
+        var (folder, descriptor) = MakeBundle("fake-ffmpeg"u8.ToArray(), "fake-ffprobe"u8.ToArray());
+        var link = Path.Combine(folder, "linked.json"); File.CreateSymbolicLink(link, descriptor);
+        var target = Path.Combine(folder, "target"); var executed = false;
+        try {
+            var error = await Assert.ThrowsAsync<ArgumentException>(() => MediaBundleInstaller.Install(link,
+                DistributionManifest.CurrentRid(), Unit, target, _ => { }, CancellationToken.None,
+                (_, _) => { executed = true; return Task.CompletedTask; }));
+            Assert.Contains("regular file", error.Message); Assert.False(executed); Assert.False(Directory.Exists(target));
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void DescriptorDirectoryAndLinkedParentAreRejected()
+    {
+        var (folder, descriptor) = MakeBundle("fake-ffmpeg"u8.ToArray(), "fake-ffprobe"u8.ToArray());
+        var link = TempPath("gd-bundle-linked-");
+        try {
+            Assert.Throws<ArgumentException>(() => MediaBundleDescriptor.RequireFile(folder));
+            TestDirectoryLinks.Create(link, folder);
+            Assert.Throws<ArgumentException>(() => MediaBundleDescriptor.RequireFile(Path.Combine(link, Path.GetFileName(descriptor))));
+        }
+        finally { if (Directory.Exists(link)) Directory.Delete(link); Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void EmptyAndUnixFifoDescriptorsAreRejectedWithoutOpening()
+    {
+        var folder = TempPath("gd-descriptor-type-"); Directory.CreateDirectory(folder);
+        try {
+            var empty = Path.Combine(folder, "empty.json"); File.WriteAllText(empty, "");
+            Assert.Throws<ArgumentException>(() => MediaBundleDescriptor.RequireFile(empty));
+            if (OperatingSystem.IsWindows()) return;
+            var fifo = Path.Combine(folder, "pipe.json");
+            var info = new System.Diagnostics.ProcessStartInfo("mkfifo") { UseShellExecute = false }; info.ArgumentList.Add(fifo);
+            using var process = System.Diagnostics.Process.Start(info)!; Assert.True(process.WaitForExit(5000)); Assert.Equal(0, process.ExitCode);
+            Assert.Throws<ArgumentException>(() => MediaBundleDescriptor.RequireFile(fifo));
+        }
+        finally { Directory.Delete(folder, true); }
     }
 
     [Fact]
@@ -153,7 +209,7 @@ public class MediaDistributionTests
     [Fact]
     public async Task ZipArchiveLayoutIsHonoredAndVerified()
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-bundle-zip-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-bundle-zip-");
         Directory.CreateDirectory(folder);
         var archive = Path.Combine(folder, "bundle.zip");
         using (var zip = ZipFile.Open(archive, ZipArchiveMode.Create))
@@ -186,7 +242,7 @@ public class MediaDistributionTests
     [Fact]
     public async Task ArchiveMissingAUnitToolIsRefused()
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-bundle-zip-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-bundle-zip-");
         Directory.CreateDirectory(folder);
         var archive = Path.Combine(folder, "bundle.zip");
         using (var zip = ZipFile.Open(archive, ZipArchiveMode.Create))
@@ -273,14 +329,14 @@ public class MediaDistributionTests
     [Fact]
     public async Task ExactPathValidationUsesOnlyTheGivenTools()
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-exact-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-exact-");
         Directory.CreateDirectory(folder);
         var ffmpeg = Path.Combine(folder, MediaBundleInstaller.ToolFileName("ffmpeg"));
         var ffprobe = Path.Combine(folder, MediaBundleInstaller.ToolFileName("ffprobe"));
         File.WriteAllBytes(ffmpeg, new byte[] { 1, 2, 3 });
         File.WriteAllBytes(ffprobe, new byte[] { 4, 5, 6 });
         // A missing staged tool fails with words before anything runs.
-        var missing = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var missing = await Assert.ThrowsAsync<MediaFailureException>(() =>
             MediaTools.EnsureEncoding(MediaProfile.Default, false, Path.Combine(folder, "nope"), ffprobe, CancellationToken.None));
         Assert.Contains("missing", missing.Message);
         // Fake bytes are never a working ffmpeg — no env override involved.
@@ -291,13 +347,13 @@ public class MediaDistributionTests
     [Fact]
     public async Task FolderLockSerializesAcrossHolders()
     {
-        var folder = Path.Combine(Path.GetTempPath(), "gd-lock-" + Guid.NewGuid().ToString("N"));
+        var folder = TempPath("gd-lock-");
         var first = await MediaInstaller.AcquireFolderLock(folder, CancellationToken.None);
         try
         {
             // A second holder (another process would see the same) waits and
             // its cancellation token, not a hang, ends the wait.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); // timing-under-test: the token, not a hang, must end the serialized lock wait
             await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await MediaInstaller.AcquireFolderLock(folder, cts.Token));
         }
         finally
@@ -314,7 +370,7 @@ public class MediaDistributionTests
     {
         var variable = "GAMEDIRECTOR_FFPROBE";
         var previous = Environment.GetEnvironmentVariable(variable);
-        var missing = Path.Combine(Path.GetTempPath(), "gd-missing-" + Guid.NewGuid().ToString("N"), "ffprobe");
+        var missing = Path.Combine(TempPath("gd-missing-"), "ffprobe");
         try
         {
             Environment.SetEnvironmentVariable(variable, missing);
@@ -322,7 +378,7 @@ public class MediaDistributionTests
             var resolution = MediaTools.Resolve("ffprobe");
             Assert.True(resolution.Broken);
             Assert.Equal(missing, resolution.Path);
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            var ex = await Assert.ThrowsAsync<MediaFailureException>(() =>
                 MediaTools.EnsureEncoding(MediaProfile.Default, false, CancellationToken.None));
             Assert.Contains(variable, ex.Message);
             Assert.Contains("does not exist", ex.Message);
@@ -341,7 +397,7 @@ public class MediaDistributionTests
         // as an error, never as a silent pass or a fallback to another ffmpeg.
         var variable = "GAMEDIRECTOR_FFMPEG";
         var previous = Environment.GetEnvironmentVariable(variable);
-        var fake = Path.Combine(Path.GetTempPath(), "gd-fake-" + Guid.NewGuid().ToString("N"),
+        var fake = Path.Combine(TempPath("gd-fake-"),
             OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
         try
         {

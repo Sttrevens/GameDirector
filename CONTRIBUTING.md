@@ -18,11 +18,16 @@ want the most contributions.
    settings only — never in Film assets, plans, manifests, samples or tests.
 5. **Production never calls a model.** Decision providers (Jev) live in the
    separate `GameDirector.Decisions` module; capture/edit jobs stay offline.
+6. **Every fact is one row.** Content (cues, vocabulary, capabilities,
+   manifests, bindings) is declared once in a table or contract row — see
+   "Content shape" in `docs/architecture.md` before adding a second copy.
 
 ## Development setup
 
-- .NET SDK **8.0.125+** (see `global.json`; `rollForward: latestFeature`)
+- .NET SDK **8.0.125+** (see `global.json`; `rollForward: latestMajor`)
+  — the canonical Unity Core DLL rebuild/check requires **exactly 8.0.125**.
 - Python 3 (release packaging + installer contract tests)
+- Node 22 (Three engine tests); run `npm ci --ignore-scripts --prefix packages/gamedirector-three`
 - FFmpeg + ffprobe with `libx264` and `libass` (media tests and take/edit)
 - Unity 2022.3 LTS, only if you work on the Unity bridge package
 
@@ -30,6 +35,27 @@ want the most contributions.
 dotnet test                              # core + installer + contract tests
 python tools/test_unity_installer.py     # Python installer contract
 python tools/test_archive_layout.py      # archive layout contract
+node tools/test_document_state.mjs
+
+# Engine contracts (build Debug CLI first)
+dotnet restore --locked-mode
+dotnet build --no-restore
+python3 tools/test_cli_contract.py
+npm ci --ignore-scripts --prefix packages/gamedirector-three
+node tools/test_three_bundle.mjs
+node tools/test_three_envelope.mjs
+node tools/test_three_presentation.mjs
+node tools/test_fps_agreement_unit.mjs
+node tools/test_bridge_admission.mjs
+node tools/test_three_hermetic.mjs
+node tools/test_three_conformance.mjs
+node tools/test_three_roles.mjs
+node tools/test_three_measure.mjs
+node tools/test_three_contract.mjs
+python3 tools/test_engine_contract_reads.py --self-test
+python3 tools/test_engine_contract_reads.py
+bash tools/build_core_dll.sh --check
+python3 tools/test_core_dll.py
 ```
 
 ## The best first contribution: a second-game adapter
@@ -38,11 +64,15 @@ Porting GameDirector to your game is deliberately small:
 
 1. **Write a capability manifest** (`adapters/<yourgame>/manifests/*.json`):
    roles, actors + animation clips, locations, audio, shot types. Use
-   `adapters/cdrebirth/manifests/cdrebirth.manifest.json` as a reference.
-2. **Implement a thin adapter** over the generic base in
-   `packages/com.gamedirector.unity` (Unity), or model it on the Three.js
-   interpreter (`packages/gamedirector-three`) and the
-   [Sandring recipe](adapters/sandring/README.md) for another engine.
+   `adapters/stardeck/manifest.json` as a reference.
+   Registered capabilities and their per-row undeclared behavior are in
+   `gd grammar` / `gd contract --json` → `capabilities[]`. Unregistered extension
+   keys are accepted and identity-bearing, but uninterpreted. A new engine follows
+   [the EngineContract implementer guide](docs/contract/README.md).
+2. **Bind the scene** with Unity's GenericSceneAdapter and role/location markers,
+   or Godot metadata; no code is needed for these paths. Three.js uses a small
+   `adapter.js`, as in [Stardeck](adapters/stardeck/README.md). See
+   [Adapters](docs/architecture.md#adapters) for custom runtime systems.
 3. **Validate offline first** — sandbox/director mode only; no networking.
 4. **Record one real take** and include the receipts (`take.json`, event log)
    as evidence in your PR.

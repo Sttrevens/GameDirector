@@ -38,7 +38,11 @@ namespace GameDirector.Unity
                     foreach(var role in _manifest.Roles) {
                         var descriptor=_manifest.FindActor(role.DefaultActor);
                         if(descriptor==null)continue;
-                        descriptor.Clips.RemoveAll(clip=>!IsAnimationBound(role.Id,clip));
+                        // Ambiguous bindings cannot establish support/absence.
+                        // Keep the proposal intact; Preflight names the stage
+                        // conflict rather than blaming an apparently unknown clip.
+                        try {descriptor.Clips=descriptor.Clips.FindAll(clip=>IsAnimationBound(role.Id,clip));}
+                        catch(StageBindingException) { }
                     }
 #endif
                 }
@@ -84,6 +88,13 @@ namespace GameDirector.Unity
                 .Append(RenderSettings.fogStartDistance.ToString("R",System.Globalization.CultureInfo.InvariantCulture)).Append(RenderSettings.fogEndDistance.ToString("R",System.Globalization.CultureInfo.InvariantCulture))
                 .Append(QualitySettings.GetQualityLevel());
             if(RenderSettings.skybox!=null)AppendMaterialIdentity(text,RenderSettings.skybox);
+            // Runtime code is part of the picture's identity: a recompile keeps
+            // every serialized input and instance id identical, so each module
+            // version id below must change the fingerprint — the GameDirector
+            // runtime assembly, the Core assembly and the concrete game adapter.
+            text.Append('|').Append(typeof(GameDirectorAdapterBase).Assembly.ManifestModule.ModuleVersionId)
+                .Append('|').Append(typeof(GameDirector.Core.Playback.TimelinePlayer).Assembly.ManifestModule.ModuleVersionId)
+                .Append('|').Append(GetType().Assembly.ManifestModule.ModuleVersionId);
             AppendSourceIdentity(text);
             return text.ToString();
         }
@@ -136,7 +147,15 @@ namespace GameDirector.Unity
             if (_dynamicRoles.TryGetValue(id, out var t) && t != null) return t;
             return DirectorRoleRegistry.Find(id, gameObject.scene);
         }
+        // Execution-time binding failures are engine faults, not Preflight refusals.
         protected Transform RequireRole(string id) => ResolveRole(id) ?? throw new InvalidOperationException("unbound role: " + id);
+        /// <summary>A manifest-valid request this stage cannot execute right now.
+        /// Preflight runs AFTER admission: an undeclared mode, an unbound
+        /// role/location/audio/animation binding, unowned stage clocks or an
+        /// adapter stage refusal is a state conflict (409), never invalid input
+        /// (400) and never an engine fault (500). Runtime execution failures
+        /// after Preflight stay unclassified.</summary>
+        protected static Exception RefuseStage(string message) => new BridgeRequestException(BridgeErrors.StateConflict,message);
         protected bool TryResolvePose(string id, out Vector3 pos, out float heading)
         {
             pos=default; heading=0;
@@ -147,29 +166,98 @@ namespace GameDirector.Unity
         }
         public virtual void Preflight(TimelineAsset asset)
         {
+            try { PreflightBindings(asset); }
+            catch(StageBindingException ex) { throw RefuseStage(ex.Message); }
+        }
+        private void PreflightBindings(TimelineAsset asset)
+        {
+            // Every refusal here is RefuseStage: the request already passed
+            // parse/compile/admission, so it is not the caller's input that is
+            // invalid — this stage cannot execute it right now.
             if(Manifest.Capabilities==null || !Manifest.Capabilities.TryGetValue(CapabilityKeys.DirectorMode,out var mode) || mode!=DirectorModes.OfflineSandbox)
-                throw new InvalidOperationException("adapter must explicitly declare offline-sandbox mode");
-            foreach(var role in Manifest.Roles) if(role.PresentAtStart) RequireRole(role.Id);
+                throw RefuseStage("adapter must explicitly declare offline-sandbox mode");
+            foreach(var role in Manifest.Roles) if(role.PresentAtStart && ResolveRole(role.Id)==null)throw RefuseStage("unbound role: "+role.Id);
+            AuditStageClock(); // refusal happens before a session mutates the stage
             foreach(var cue in asset.Cues) {
                 if(!string.IsNullOrEmpty(cue.HeadingTo) && Manifest.FindLocation(cue.HeadingTo)!=null && !TryResolvePose(cue.HeadingTo,out _,out _))
-                    throw new InvalidOperationException("unbound heading location: "+cue.HeadingTo);
+                    throw RefuseStage("unbound heading location: "+cue.HeadingTo);
                 if(cue.Type==CueTypes.CameraShot) {
-                    if(cue.Shot.From!="current" && !TryResolvePose(cue.Shot.From,out _,out _))throw new InvalidOperationException("unbound camera from: "+cue.Shot.From);
-                    if(ShotVocabulary.RequiresTarget(cue.Shot.Type)==true && cue.Shot.To!="current" && !TryResolvePose(cue.Shot.To,out _,out _))throw new InvalidOperationException("unbound camera to: "+cue.Shot.To);
+                    if(cue.Shot.From!=ShotVocabulary.CurrentAnchor && !TryResolvePose(cue.Shot.From,out _,out _))throw RefuseStage("unbound camera from: "+cue.Shot.From);
+                    if(cue.Shot.To!=null && cue.Shot.To!=ShotVocabulary.CurrentAnchor && !TryResolvePose(cue.Shot.To,out _,out _))throw RefuseStage("unbound camera to: "+cue.Shot.To);
                 }
                 if(cue.Type==CueTypes.ActorSpawn || cue.Type==CueTypes.ActorMove) {
                     var id=cue.Type==CueTypes.ActorSpawn?cue.Location:cue.To;
-                    if(!TryResolvePose(id,out _,out _))throw new InvalidOperationException("unbound location: "+id);
+                    if(!TryResolvePose(id,out _,out _))throw RefuseStage("unbound location: "+id);
                 }
                 if(cue.Type==CueTypes.ActorAnim) {
-                    if(!IsAnimationBound(cue.Role,cue.Clip))throw new InvalidOperationException("missing animation binding: "+cue.Role+"/"+cue.Clip);
+                    if(!IsAnimationBound(cue.Role,cue.Clip))throw RefuseStage("missing animation binding: "+cue.Role+"/"+cue.Clip);
                 }
-                if(cue.Type==CueTypes.ActorSpawn && !CanSpawn(cue.Role)) throw new InvalidOperationException("unbound spawn prefab: "+cue.Role);
+                if(cue.Type==CueTypes.ActorSpawn && !CanSpawn(cue.Role)) throw RefuseStage("unbound spawn prefab: "+cue.Role);
                 if(cue.Type==CueTypes.AudioPlay || cue.Type==CueTypes.AudioStop) {
                     if(audioBindings.Find(x=>x.audioId==cue.AudioId && x.clip!=null)==null)
-                        throw new InvalidOperationException("unbound audio: "+cue.AudioId);
+                        throw RefuseStage("unbound audio: "+cue.AudioId);
                 }
             }
+        }
+        /// <summary>Explicit adapter declaration of a clock it owns or has
+        /// made static. Never exempt an autonomous wall/unscaled-time visual.</summary>
+        protected virtual bool IsStageClockExempt(Component c) => false;
+        // Optional modules are probed by type name/property, never assembly
+        // references: the package does not require VFX or Video modules.
+        private static readonly (string Kind,Func<Component,bool> Active)[] ClockProbes = {
+            (typeof(Animator).FullName,c=>((Animator)c).enabled),
+            (typeof(ParticleSystem).FullName,c=>{var p=(ParticleSystem)c;return p.isPlaying || p.main.playOnAwake;}),
+            (typeof(UnityEngine.Playables.PlayableDirector).FullName,c=>{var d=(UnityEngine.Playables.PlayableDirector)c;return d.state==UnityEngine.Playables.PlayState.Playing || d.playOnAwake;}),
+            (typeof(Animation).FullName,c=>{var a=(Animation)c;return a.enabled && (a.playAutomatically || a.isPlaying);}),
+            ("UnityEngine.VFX.VisualEffect",c=>true), // conservative: VFX has no director sampling lease
+            ("UnityEngine.Video.VideoPlayer",c=>c is Behaviour b && b.enabled && (ClockFlag(c,"playOnAwake") || ClockFlag(c,"isPlaying")))
+        };
+        private static bool ClockFlag(Component c,string property) => (bool)c.GetType().GetProperty(property).GetValue(c);
+        // Kind names match through inheritance: a managed subtype of an
+        // Animator/VideoPlayer would still run that clock (Unity itself only
+        // attaches exact native kinds today; the walk keeps the audit honest).
+        private static bool IsKind(Component c,string kind) {
+            for(var t=c.GetType();t!=null;t=t.BaseType)if(t.FullName==kind)return true;
+            return false;
+        }
+        /// <summary>Extend the table with adapter-owned/custom autonomous clocks
+        /// (e.g. unscaled-time scripts); call base to keep native probes.</summary>
+        protected virtual bool IsAutonomousClock(Component c) => Array.Exists(ClockProbes,p=>IsKind(c,p.Kind) && p.Active(c));
+        private List<Transform> StagePresentationRoots() {
+            var roots=new List<Transform>();
+            foreach(var role in Manifest.Roles)if(role.PresentAtStart) {
+                var t=RequireRole(role.Id);if(!roots.Contains(t))roots.Add(t);
+            }
+            // A participant owns its hierarchy, even outside the cast. These
+            // roots are leased in BeginSession, not merely ignored by the audit.
+            foreach(var root in gameObject.scene.GetRootGameObjects())
+                foreach(var script in root.GetComponentsInChildren<MonoBehaviour>(true))
+                    if(script is IDirectorPresentationParticipant && !roots.Contains(script.transform))roots.Add(script.transform);
+            return roots;
+        }
+        private void AuditStageClock() {
+            var owned=StagePresentationRoots();var clocks=new List<string>();
+            foreach(var root in gameObject.scene.GetRootGameObjects())
+                foreach(var c in root.GetComponentsInChildren<Component>(true)) {
+                    if(c==null)continue;
+                    if(!IsAutonomousClock(c) || (Rig!=null && Rig.OwnsObject(c.transform)) || IsStageClockExempt(c) ||
+                        owned.Exists(t=>c.transform==t || c.transform.IsChildOf(t)))continue;
+                    clocks.Add(HierarchyPath(c.transform)+" ("+c.GetType().Name+")");
+                }
+            if(clocks.Count==0)return;
+            clocks.Sort(StringComparer.Ordinal);
+            throw RefuseStage("stage has "+clocks.Count+" clocks the director does not own: "+string.Join(", ",clocks)+
+                "; disable them in the stage, make them presentation participants, or exempt them in the adapter");
+        }
+        private static string HierarchyPath(Transform t) {
+            var path=t.name;while(t.parent!=null){t=t.parent;path=t.name+"/"+path;}return path;
+        }
+        private static uint ParticleSeed(Transform t) {
+            // Stable FNV-1a over the UTF-8 hierarchy path, never GetHashCode or
+            // an instance id. Zero is reserved by Unity for automatic seeding.
+            uint hash=2166136261;
+            foreach(var b in System.Text.Encoding.UTF8.GetBytes(HierarchyPath(t)))hash=unchecked((hash^b)*16777619);
+            return hash==0?1:hash;
         }
 #if UNITY_EDITOR
         private static bool HasAuthoredState(Animator animator,string clip) {
@@ -205,8 +293,9 @@ namespace GameDirector.Unity
             // Snapshot every attachment before any Animator.Rebind. Then lease
             // each disjoint hierarchy once: a registered hand prop must not run
             // its particles or acquire native components a second time.
-            foreach(var t in borrowed)
-                if(!borrowed.Exists(other=>other!=t && t.IsChildOf(other)))OwnActor(t);
+            var roots=StagePresentationRoots();
+            foreach(var t in roots)
+                if(!roots.Exists(other=>other!=t && t.IsChildOf(other)))OwnActor(t);
             foreach (var lease in _leases) lease.Prepare();
             EvaluateParticipants(DirectorPresentationPhase.BeforeAnimation, 0);
             EvaluateParticipants(DirectorPresentationPhase.AfterAnimation, 0);
@@ -231,7 +320,8 @@ namespace GameDirector.Unity
                 var state=p.GetPlaybackState();var particles=new ParticleSystem.Particle[p.particleCount];var count=p.GetParticles(particles);
                 if(borrowed)_restore.Add(()=>{if(p!=null){p.Stop(false,ParticleSystemStopBehavior.StopEmittingAndClear);p.randomSeed=seed;p.useAutoRandomSeed=automatic;
                     p.SetPlaybackState(state);p.SetParticles(particles,count);p.time=time;if(playing)p.Play(false);else if(paused)p.Pause(false);}});
-                p.Stop(false,ParticleSystemStopBehavior.StopEmittingAndClear);p.useAutoRandomSeed=false;p.randomSeed=42;p.Simulate(0,false,true,false);p.Pause(false);_particles.Add(p);
+                p.Stop(false,ParticleSystemStopBehavior.StopEmittingAndClear);if(automatic)p.randomSeed=ParticleSeed(p.transform);
+                p.useAutoRandomSeed=false;p.Simulate(0,false,true,false);p.Pause(false);_particles.Add(p);
             }
         }
         public virtual void AdvancePresentation(double deltaSeconds,double timelineTime)
@@ -245,7 +335,7 @@ namespace GameDirector.Unity
                 var m=_movers[key];if(m.Target==null){_movers.Remove(key);continue;}
                 m.Target.position=Vector3.MoveTowards(m.Target.position,m.To,m.Speed*dt);
                 FaceTowards(m.Target,m.To);
-                if((m.Target.position-m.To).sqrMagnitude<.00001f) {
+                if((m.Target.position-m.To).sqrMagnitude<.00001f) { // engine-local: actor movement arrival epsilon, not camera aim
                     _movers.Remove(key);if(!string.IsNullOrEmpty(m.Heading))FaceRole(key,m.Heading);
                 }
             }

@@ -15,10 +15,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\TestSupport\TempPaths.cs" Link="TempPaths.cs" />
+    <Compile Include="..\TestSupport\TestBudget.cs" Link="TestBudget.cs" />
     <ProjectReference Include="..\GameDirector.Core\GameDirector.Core.csproj" />
     <ProjectReference Include="..\GameDirector.Client\GameDirector.Client.csproj" />
     <ProjectReference Include="..\GameDirector.Decisions\GameDirector.Decisions.csproj" />
     <ProjectReference Include="..\GameDirector.Workbench\GameDirector.Workbench.csproj" />
+  </ItemGroup>
+
+  <!-- Frozen v1 document store produced by the unmodified baseline code; never edit. -->
+  <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

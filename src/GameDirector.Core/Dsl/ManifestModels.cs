@@ -24,7 +24,8 @@ namespace GameDirector.Core.Dsl
         /// <summary>Framing vocabulary (e.g. extreme-closeup/closeup/medium/full/wide).</summary>
         public List<string> FrameTypes { get; set; } = new List<string>();
 
-        /// <summary>Feature flags, e.g. "capture.video"="avpro", "director.mode"="offline-sandbox".</summary>
+        /// <summary>Typed engine/adapter declarations described by CapabilitySpecs;
+        /// unregistered extension keys remain accepted, uninterpreted vocabulary.</summary>
         public Dictionary<string, string> Capabilities { get; set; } = new Dictionary<string, string>();
 
         public RoleDescriptor FindRole(string id)
@@ -66,7 +67,7 @@ namespace GameDirector.Core.Dsl
         public string DefaultActor { get; set; }
         /// <summary>True when the role exists in the scene before any spawn cue.</summary>
         public bool PresentAtStart { get; set; }
-        /// <summary>Free-form adapter hint, e.g. "bind:tag:Player" or "spawn:prefab:BigGuai".</summary>
+        /// <summary>Free-form adapter hint, e.g. "bind:tag:Player" or "spawn:prefab:Robot".</summary>
         public string BindingHint { get; set; }
     }
 
@@ -81,7 +82,7 @@ namespace GameDirector.Core.Dsl
     public sealed class LocationDescriptor
     {
         public string Id { get; set; }
-        /// <summary>Logical space/scene this location belongs to (e.g. "grimforest").</summary>
+        /// <summary>Logical space/scene this location belongs to (e.g. "stage").</summary>
         public string Space { get; set; }
         public float[] Position { get; set; }
         public float HeadingDeg { get; set; }

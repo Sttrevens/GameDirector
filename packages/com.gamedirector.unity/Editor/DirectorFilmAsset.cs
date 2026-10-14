@@ -19,7 +19,7 @@ namespace GameDirector.Unity.Editor
         }
         public static JObject EmptyFilm() => new JObject
         {
-            ["version"] = 1, ["title"] = "New film",
+            ["version"] = 1, ["title"] = DirectorUi.T("newFilmTitle"),
             ["frameRate"] = GameDirector.Core.Dsl.FilmDefaults.FrameRate,
             ["width"] = GameDirector.Core.Dsl.FilmDefaults.Width,
             ["height"] = GameDirector.Core.Dsl.FilmDefaults.Height,

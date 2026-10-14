@@ -9,6 +9,7 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
+from workbench_test_client import wait_service
 
 
 def main():
@@ -21,7 +22,18 @@ def main():
     root.mkdir(parents=True, exist_ok=False)
     layout = json.loads((distribution / 'distribution.json').read_text(encoding='utf-8'))
     app = layout['apps']['cli']
-    cli = distribution / app['folder'] / (app['executable'] + ('.exe' if os.name == 'nt' else ''))
+    cli = distribution / layout['runtimeFolder'] / (app['executable'] + ('.exe' if os.name == 'nt' else ''))
+    for folder in (distribution, distribution / layout['unity']['distributionFolder']):
+        for name in ('LICENSE', 'THIRD-PARTY-NOTICES.md', 'CHANGELOG.md'):
+            assert (folder / name).is_file() and (folder / name).stat().st_size > 0, f'missing release legal document: {folder / name}'
+    runtimes = [distribution / layout['runtimeFolder']]
+    assert not (distribution / layout['unity']['distributionFolder'] / layout['unity']['bundledRuntimeParent'] / layout['runtimeFolder']).exists(), 'full archive must carry only one runtime'
+    for runtime in runtimes:
+        config = next(runtime.glob('*.runtimeconfig.json'))
+        for framework in json.loads(config.read_text())['runtimeOptions']['includedFrameworks']:
+            for name in ('LICENSE.txt', 'THIRD-PARTY-NOTICES.txt'):
+                path = runtime / 'licenses' / framework['name'] / name
+                assert path.is_file() and path.stat().st_size > 0, f'missing runtime legal text: {path}'
     env = dict(os.environ, PATH='', DOTNET_ROOT=str(root / 'no-runtime'), DOTNET_MULTILEVEL_LOOKUP='0')
     # A native self-contained executable must not require a globally installed SDK.
     help_result = subprocess.run([str(cli), '--help'], env=env, capture_output=True, text=True, encoding='utf-8', timeout=30)
@@ -53,16 +65,12 @@ def main():
     mcp = None
     try:
         descriptor = root / 'store/.service.json'
-        for _ in range(300):
-            if descriptor.exists():
-                break
-            assert service.poll() is None, 'Packaged Workbench exited; see workbench.log'
-            time.sleep(.1)
-        data = json.loads(descriptor.read_text(encoding='utf-8'))
+        data = wait_service(descriptor, service)
         endpoint = data['address']
         with urllib.request.urlopen(endpoint + '/api/health', timeout=10) as response:
             assert json.load(response)['product'] == 'GameDirector'
         env['GAMEDIRECTOR_WORKBENCH'] = endpoint
+        env['GAMEDIRECTOR_WORKBENCH_TOKEN'] = data['token']
         mcp = subprocess.Popen([str(cli), 'mcp'], env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=log, text=True, encoding='utf-8', bufsize=1, start_new_session=os.name != 'nt')
         messages = queue.Queue()
@@ -110,7 +118,7 @@ def main():
         evidence = dict(passed=True, distribution=str(distribution), sdkOnPath=False,
                         nativeHelp=True, embeddedGuide=True, nativeWorkbench=True, nativeMcp=True,
                         stdioClean=True, sharedStore=True, unityDryRun=True,
-                        unityInstall=True, repeatedInstallZeroWrites=True, tools=names)
+                        unityInstall=True, repeatedInstallZeroWrites=True, legalPayloads=True, tools=names)
         (root / 'result.json').write_text(json.dumps(evidence, indent=2) + '\n', encoding='utf-8')
         print(json.dumps(evidence))
     finally:

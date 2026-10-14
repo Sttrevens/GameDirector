@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "frameRate": 24,
+  "width": 960,
+  "height": 540,
+  "sources": {
+    "v1": "takes/v1/picture.mp4",
+    "v2": "takes/v2/picture.mp4"
+  },
+  "ranges": [
+    { "source": "v1", "start": 0, "end": 5, "reason": "Establish Bolt and Pip approaching from opposite ends.", "beat": "arrival" },
+    { "source": "v2", "start": 5, "end": 9, "reason": "Use the revised greeting coverage for the exchange.", "beat": "greeting" },
+    { "source": "v1", "start": 9, "end": 16, "reason": "Finish on the shared wide dance from the first take.", "beat": "dance" }
+  ]
+}

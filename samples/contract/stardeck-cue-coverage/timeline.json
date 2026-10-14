@@ -1,0 +1,14 @@
+{
+  "version": "0.1",
+  "id": "stardeck-synthetic-cue-coverage",
+  "title": "Synthetic Stardeck cue contract coverage",
+  "cues": [
+    { "t": 0, "type": "camera.shot", "shot": { "type": "lockoff", "subject": "bolt", "from": "cam_back_wide", "frame": "wide", "durationSeconds": 4 } },
+    { "t": 0.25, "type": "actor.spawn", "role": "pip", "location": "pip_start", "headingTo": "bolt" },
+    { "t": 0.5, "type": "actor.anim", "role": "pip", "clip": "Wave", "fade": 0 },
+    { "t": 0.5, "type": "audio.play", "audioId": "stardeck-beep", "volume": 0.5 },
+    { "t": 1, "type": "world.timescale", "scale": 0.5, "duration": 1 },
+    { "t": 2.5, "type": "audio.stop", "audioId": "stardeck-beep" },
+    { "t": 4, "type": "marker", "label": "Contract coverage complete" }
+  ]
+}

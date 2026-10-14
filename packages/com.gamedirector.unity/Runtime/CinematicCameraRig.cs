@@ -14,17 +14,26 @@ namespace GameDirector.Unity
         public delegate Transform RoleResolver(string id);
         public delegate bool PoseResolver(string id,out Vector3 position,out float heading);
         /// <summary>Camera position for one evaluated instant. from/to are resolved
-        /// anchors, target is the live subject point, offset is from-target, e is
-        /// the eased shot progress in [0,1], params the authored shot params.</summary>
+        /// anchors (to equals from when the shot authors no destination), target is
+        /// the live subject point, offset is from-target, e is the eased shot
+        /// progress in [0,1], params the authored shot params.</summary>
         public delegate Vector3 ShotMotion(Vector3 from, Vector3 to, Vector3 target, Vector3 offset, float e, System.Func<string,float,float> param);
 
-        public static readonly IDictionary<string, ShotMotion> Motions = new Dictionary<string, ShotMotion>
+        private static readonly Dictionary<string, ShotMotion> Kernels = new Dictionary<string, ShotMotion>
         {
-            ["dolly"] = (from, to, target, offset, e, param) => Vector3.Lerp(from, to, e),
-            ["crane"] = (from, to, target, offset, e, param) => Vector3.Lerp(from, to, e),
-            ["orbit"] = (from, to, target, offset, e, param) => target + Quaternion.AngleAxis(param("orbitDeg", 90) * e, Vector3.up) * offset,
-            ["tracking"] = (from, to, target, offset, e, param) => target + offset,
+            [MotionFormulas.Hold] = Hold,
+            [MotionFormulas.Lerp] = (from, to, target, offset, e, param) => Vector3.Lerp(from, to, e),
+            [MotionFormulas.OrbitUp] = (from, to, target, offset, e, param) => target + Quaternion.AngleAxis(param("orbitDeg", ShotVocabulary.DefaultOf("orbitDeg")) * e, Vector3.up) * offset,
+            [MotionFormulas.TrackOffset] = (from, to, target, offset, e, param) => target + offset,
         };
+        public static readonly IDictionary<string, ShotMotion> Motions = CreateMotions();
+        private static IDictionary<string, ShotMotion> CreateMotions() {
+            var motions=new Dictionary<string,ShotMotion>();
+            foreach(var row in ShotVocabulary.Shots)if(row.Id!=null && row.Motion!=null && Kernels.TryGetValue(row.Motion,out var kernel))motions[row.Id]=kernel;
+            return motions;
+        }
+        public static bool ImplementsMotion(string id)=>id!=null && Kernels.ContainsKey(id);
+        public static bool ImplementsEase(string formula) {try{Ease(0,formula);return true;}catch(InvalidOperationException){return false;}}
         private static Vector3 Hold(Vector3 from, Vector3 to, Vector3 target, Vector3 offset, float e, System.Func<string,float,float> param) => from;
         private static ShotMotion MotionFor(string type) => type != null && Motions.TryGetValue(type, out var motion) ? motion : (ShotMotion)Hold;
 
@@ -33,12 +42,14 @@ namespace GameDirector.Unity
         private RoleResolver _roles;
         private double _startTime;
         private float _startFov;
+        private string _easeFormula;
         private Vector3 _from,_to,_offset,_subjectCenter;
         public Camera DirectorCamera {
             get {
                 if(_camera==null){var go=new GameObject("DirectorCamera");go.transform.SetParent(transform,false);
-                    _camera=go.AddComponent<Camera>();_camera.enabled=false;_camera.fieldOfView=ShotVocabulary.DefaultFov;_camera.nearClipPlane=.03f;
-                    _camera.farClipPlane=1000;_camera.allowHDR=true;_camera.backgroundColor=new Color(.035f,.045f,.07f);}
+                    _camera=go.AddComponent<Camera>();_camera.enabled=false;_camera.fieldOfView=ShotVocabulary.DefaultFov;_camera.nearClipPlane=CameraRig.NearClip;
+                    _camera.farClipPlane=CameraRig.FarClip;
+                    _camera.allowHDR=true;_camera.backgroundColor=new Color(.035f,.045f,.07f);}
                 return _camera;
             }
         }
@@ -49,32 +60,38 @@ namespace GameDirector.Unity
         }
         public bool OwnsObject(Transform candidate) => _camera!=null && candidate==_camera.transform;
         public bool ShotActive=>_shot!=null;
-        private float P(string key,float fallback=0)=>_shot.Params!=null && _shot.Params.TryGetValue(key,out var v)?v:fallback;
+        private float P(string key)=>_shot.Params!=null && _shot.Params.TryGetValue(key,out var v)?v:ShotVocabulary.DefaultOf(key);
+        private float P(string key,float derived)=>_shot.Params!=null && _shot.Params.TryGetValue(key,out var v)?v:derived;
         public void BeginShot(ShotSpec shot,RoleResolver roles,PoseResolver poses,double timelineTime=0)
         {
-            _shot=shot??throw new ArgumentNullException(nameof(shot));_roles=roles;_startTime=timelineTime;
+            _shot=shot??throw new ArgumentNullException(nameof(shot));
+            var ease=ShotVocabulary.FindEase(shot.Ease);if(ease==null)throw new InvalidOperationException("unknown camera ease id: "+(shot.Ease??"<null>")); // engine-local: diagnostic sentinel, never an ease default
+            _easeFormula=ease.Formula;_roles=roles;_startTime=timelineTime;
             var subject=roles(shot.Subject);if(subject==null)throw new InvalidOperationException("camera subject unbound: "+shot.Subject);
             var b=BoundsOf(subject);_subjectCenter=b.center-subject.position;
-            if(shot.Params!=null && shot.Params.ContainsKey("targetHeight"))_subjectCenter=new Vector3(0,P("targetHeight"),0);
+            if(shot.Params!=null && shot.Params.ContainsKey("targetHeight"))_subjectCenter=new Vector3(0,shot.Params["targetHeight"],0);
             var camera=DirectorCamera;
             _startFov=shot.Fov??(shot.FocalLengthMm.HasValue?Camera.FocalLengthToFieldOfView(shot.FocalLengthMm.Value,ShotVocabulary.SensorSizeMm):ShotVocabulary.DefaultFov);
             camera.fieldOfView=_startFov;
-            if(shot.From=="current")_from=camera.transform.position;
+            if(shot.From==ShotVocabulary.CurrentAnchor)_from=camera.transform.position;
             else if(!poses(shot.From,out _from,out _))throw new InvalidOperationException("camera from unbound: "+shot.From);
-            if(shot.From=="current" && P("distance")<=0) {
+            if(shot.From==ShotVocabulary.CurrentAnchor && P("distance")<=0) {
                 // Framing is relative to subject size and lens, while explicit
                 // anchors retain their authored spatial composition. Coverage
                 // comes from the shared frame vocabulary; a shot may override it.
                 float coverage=P("coverage",(float)ShotVocabulary.Coverage(shot.Frame));
-                float distance=Mathf.Max(.1f,b.size.y)/(2*Mathf.Tan(camera.fieldOfView*Mathf.Deg2Rad*.5f)*coverage);
-                var back=_from-Target();if(back.sqrMagnitude<.01f)back=new Vector3(0,.25f,-1);
+                float distance=Mathf.Max(CameraRig.MinSubjectHeight,b.size.y)/(2*Mathf.Tan(camera.fieldOfView*Mathf.Deg2Rad*.5f)*coverage); // engine-local: mathematical half-angle factor
+                var back=_from-Target();if(back.sqrMagnitude<CameraRig.DegenerateSqrMagnitude)back=new Vector3(0,CameraRig.AutoFrameFallbackUp,-CameraRig.FallbackBack);
                 _from=Target()+back.normalized*distance;
             }
             _from+=new Vector3(P("offsetX"),P("offsetY"),P("offsetZ"));
-            if(P("distance")>0){var d=_from-Target();if(d.sqrMagnitude<.01f)d=new Vector3(0,.2f,-1);_from=Target()+d.normalized*P("distance");}
+            if(P("distance")>0){var d=_from-Target();if(d.sqrMagnitude<CameraRig.DegenerateSqrMagnitude)d=new Vector3(0,CameraRig.DistanceFallbackUp,-CameraRig.FallbackBack);_from=Target()+d.normalized*P("distance");}
             _to=_from;
-            if(ShotVocabulary.RequiresTarget(shot.Type)==true) {
-                if(shot.To=="current")_to=camera.transform.position;
+            // "to" is resolved whenever authored, for built-in and custom motions
+            // alike; RequiresTarget only decides whether omitting it is a compile
+            // error. Unauthored destination = the start (the Three runtime matches).
+            if(shot.To!=null) {
+                if(shot.To==ShotVocabulary.CurrentAnchor)_to=camera.transform.position;
                 else if(!poses(shot.To,out _to,out _))throw new InvalidOperationException("camera to unbound: "+shot.To);
                 _to+=new Vector3(P("toOffsetX"),P("toOffsetY"),P("toOffsetZ"));
             }
@@ -85,15 +102,15 @@ namespace GameDirector.Unity
         {
             if(_shot==null)return;
             var p=_shot.DurationSeconds>0?Mathf.Clamp01((float)((time-_startTime)/_shot.DurationSeconds)):0;
-            var e=Ease(p,_shot.Ease);var target=Target();var position=MotionFor(_shot.Type)(_from,_to,target,_offset,e,P);
+            var e=Ease(p,_easeFormula);var target=Target();var position=MotionFor(_shot.Type)(_from,_to,target,_offset,e,P);
             var elapsed=(float)(time-_startTime);
-            position+=Vector3.up*((Mathf.PerlinNoise(elapsed*7.3f,.5f)-.5f)*.05f*P("shake"));
+            position+=Vector3.up*((Mathf.PerlinNoise(elapsed*CameraRig.ShakeFrequencyHz,CameraRig.ShakeRow)-CameraRig.ShakeCenter)*CameraRig.ShakeScale*P("shake"));
             if(!string.IsNullOrEmpty(_shot.LookAt)) {
                 var t=_roles(_shot.LookAt);if(t==null)throw new InvalidOperationException("lookAt disappeared");target=BoundsOf(t).center;
             }
             var cam=DirectorCamera.transform;cam.position=position;var direction=target-position;
-            if(direction.sqrMagnitude>.00001f)cam.rotation=Quaternion.LookRotation(direction)*Quaternion.Euler(P("tilt"),P("pan"),P("roll"));
-            if(_shot.Params!=null && _shot.Params.ContainsKey("endFov"))DirectorCamera.fieldOfView=Mathf.Lerp(_startFov,P("endFov"),e);
+            if(direction.sqrMagnitude>CameraRig.AimEpsilonSqrMagnitude)cam.rotation=Quaternion.LookRotation(direction)*Quaternion.Euler(P("tilt"),P("pan"),P("roll"));
+            if(_shot.Params!=null && _shot.Params.ContainsKey("endFov"))DirectorCamera.fieldOfView=Mathf.Lerp(_startFov,_shot.Params["endFov"],e);
         }
         public object InspectFrame()
         {
@@ -101,7 +118,7 @@ namespace GameDirector.Unity
             var subject=_roles(_shot.Subject);var b=BoundsOf(subject);var c=DirectorCamera;var center=c.WorldToViewportPoint(b.center);
             int visible=0,total=9; Physics.SyncTransforms();
             for(int i=0;i<total;i++){
-                var p=i==8?b.center:b.center+Vector3.Scale(b.extents,new Vector3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1));
+                var p=i==8?b.center:b.center+Vector3.Scale(b.extents,new Vector3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1)); // engine-local: eight box corners plus center; corner bit mask
                 var v=c.WorldToViewportPoint(p);if(v.z<=0 || v.x<0 || v.x>1 || v.y<0 || v.y>1)continue;
                 var d=p-c.transform.position;
                 if(!Physics.Raycast(c.transform.position,d.normalized,out var hit,d.magnitude,~0,QueryTriggerInteraction.Ignore) || hit.transform.IsChildOf(subject))visible++;
@@ -134,6 +151,6 @@ namespace GameDirector.Unity
             return b;
         }
         public void EndShot()=>_shot=null;
-        private static float Ease(float p,string ease){switch(ease){case "linear":return p;case "in":return p*p;case "out":return 1-(1-p)*(1-p);default:return p*p*(3-2*p);}}
+        private static float Ease(float p,string formula){switch(formula){case EaseFormulas.Identity:return p;case EaseFormulas.QuadIn:return p*p;case EaseFormulas.QuadOut:return 1-(1-p)*(1-p);case EaseFormulas.Smoothstep:return p*p*(3-2*p);default:throw new InvalidOperationException("unimplemented ease formula: "+(formula??"<null>"));}} // engine-local: diagnostic sentinel, never a formula default
     }
 }

@@ -16,7 +16,10 @@ public static class MediaInstaller
 
     public sealed record Receipt(
         string OptionId, string StartedUtc, bool Installed, string? Note,
-        string[] Output, object? Tools, string? Error, string? ReceiptPath = null);
+        string[] Output, object? Tools, string? Error, string? ReceiptPath = null)
+    {
+        public string? NoteCode { get; init; }
+    }
 
     /// <summary>Serialize installs: two overlapping installs would race the
     /// same user media folder and the resolution cache.</summary>
@@ -31,7 +34,7 @@ public static class MediaInstaller
             if (FindManager(s) != null)
                 options.Add(new(s.Id, s.Kind, s.Label, s.Detail, s.License));
         foreach (var d in manifest.DownloadsFor(rid))
-            options.Add(new(d.Id, "download", d.Label, d.Detail + "（SHA-256 钉定核验后装入当前用户的 GameDirector 媒体目录）", d.License));
+            options.Add(new(d.Id, "download", d.Label, d.Detail + " (installed into your GameDirector media folder after pinned SHA-256 verification)", d.License));
         var bundle = manifest.UserBundle;
         options.Add(new(bundle.Id, "userBundle", bundle.Label, bundle.Detail, bundle.License));
         return options;
@@ -75,7 +78,7 @@ public static class MediaInstaller
     /// contract and persist a receipt. Idempotent: a satisfied contract is a no-op.
     /// descriptorPath is required for the user-bundle option.</summary>
     public static async Task<Receipt> Install(MediaDistributions manifest, string rid, string optionId,
-        string? descriptorPath, string receiptFolder, CancellationToken ct)
+        string? descriptorPath, string receiptFolder, CancellationToken ct, Action<string>? progress = null)
     {
         await InstallGate.WaitAsync(ct);
         try
@@ -84,7 +87,7 @@ public static class MediaInstaller
             // which are separate processes: serialize them with an OS-level file
             // lock (released by the OS even if a holder dies — no stale locks).
             await using var folderLock = await AcquireFolderLock(MediaTools.UserMediaFolder, ct);
-            return await InstallLocked(manifest, rid, optionId, descriptorPath, receiptFolder, ct);
+            return await InstallLocked(manifest, rid, optionId, descriptorPath, receiptFolder, ct, progress);
         }
         finally { InstallGate.Release(); }
     }
@@ -107,24 +110,26 @@ public static class MediaInstaller
             catch (IOException ex)
             {
                 if (waiting.Elapsed >= maximumWait)
-                    throw new IOException("Could not acquire the media installation lock within " + maximumWait.TotalSeconds + " seconds. Check another running installer and the media folder's availability.", ex);
+                    throw new StateConflictException("Could not acquire the media installation lock within " + maximumWait.TotalSeconds + " seconds. Check another running installer and the media folder's availability.", retryable:true, inner:ex);
                 await Task.Delay(250, ct);
             }
         }
     }
 
     private static async Task<Receipt> InstallLocked(MediaDistributions manifest, string rid, string optionId,
-        string? descriptorPath, string receiptFolder, CancellationToken ct)
+        string? descriptorPath, string receiptFolder, CancellationToken ct, Action<string>? progress)
     {
         var started = DateTime.UtcNow;
         var output = new List<string>();
+        void Log(string text) { lock (output) output.Add(text); progress?.Invoke(text); }
         var receiptPath = Path.Combine(receiptFolder,
             "media-install-" + started.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6] + ".json");
 
-        async Task<Receipt> Finish(bool installed, string? note, string? error)
+        async Task<Receipt> Finish(bool installed, string? note, string? error, string? noteCode = null)
         {
             var tools = MediaTools.Resolutions().Select(r => new { r.Name, r.Path, r.Source, r.Broken }).ToArray();
-            var receipt = new Receipt(optionId, started.ToString("o"), installed, note, output.ToArray(), tools, error, receiptPath);
+            string[] lines; lock (output) lines = output.ToArray();
+            var receipt = new Receipt(optionId, started.ToString("o"), installed, note, lines, tools, error, receiptPath) { NoteCode = noteCode };
             try
             {
                 Directory.CreateDirectory(receiptFolder);
@@ -138,10 +143,10 @@ public static class MediaInstaller
         }
 
         if (await Satisfied(ct))
-            return await Finish(false, "编码组件已可用，未执行安装。", null);
+            return await Finish(false, "Encoding tools are already available. Nothing was installed.", null, "media_already_ready");
 
         var option = Options(manifest, rid).FirstOrDefault(o => o.Id == optionId)
-            ?? throw new ArgumentException($"该平台没有这个安装方式，或该方式当前不可用：{optionId}");
+            ?? throw new ArgumentException($"This installation method is unavailable on this platform: {optionId}");
 
         string? error = null;
         try
@@ -152,8 +157,8 @@ public static class MediaInstaller
                 {
                     var strategy = manifest.StrategiesFor(rid).First(s => s.Id == optionId);
                     var manager = FindManager(strategy)
-                        ?? throw new InvalidOperationException($"找不到包管理器 {strategy.Manager}；该方式本来不该出现。请改用其他安装方式。");
-                    await RunLogged(manager, strategy.Args, TimeSpan.FromSeconds(strategy.TimeoutSeconds), output, ct);
+                        ?? throw new MediaFailureException($"Package manager {strategy.Manager} was not found. This option should not have been offered; choose another installation method.");
+                    await RunLogged(manager, strategy.Args, TimeSpan.FromSeconds(strategy.TimeoutSeconds), Log, ct);
                     break;
                 }
                 case "download":
@@ -165,7 +170,7 @@ public static class MediaInstaller
                         Directory.CreateDirectory(tempFolder);
                         var archiveName = Path.GetFileName(new Uri(download.Url).LocalPath);
                         var local = Path.Combine(tempFolder, archiveName);
-                        output.Add("download " + download.Url);
+                        Log("download " + download.Url);
                         await PinnedDownload.Fetch(new Uri(download.Url), download.ArchiveSha256, download.MaxBytes, local, ct);
                         var descriptor = new MediaBundleDescriptor
                         {
@@ -174,7 +179,7 @@ public static class MediaInstaller
                             Files = download.Files, License = download.License, Source = download.Source,
                         };
                         await MediaBundleInstaller.InstallDescriptor(descriptor, tempFolder, manifest.Unit,
-                            MediaTools.UserMediaFolder, output.Add, ct);
+                            MediaTools.UserMediaFolder, Log, ct);
                     }
                     finally { try { Directory.Delete(tempFolder, true); } catch (IOException) { } }
                     break;
@@ -182,9 +187,9 @@ public static class MediaInstaller
                 case "userBundle":
                 {
                     if (string.IsNullOrWhiteSpace(descriptorPath))
-                        throw new ArgumentException("user-bundle 需要一个套件描述文件路径（bundle descriptor JSON）。");
+                        throw new ArgumentException("user-bundle requires a bundle descriptor JSON path.");
                     await MediaBundleInstaller.Install(descriptorPath, rid, manifest.Unit,
-                        MediaTools.UserMediaFolder, output.Add, ct);
+                        MediaTools.UserMediaFolder, Log, ct);
                     break;
                 }
                 default:
@@ -195,14 +200,15 @@ public static class MediaInstaller
         {
             // The receipt promise holds on cancellation too: whatever output
             // the strategy produced stays behind for diagnosis.
-            await Finish(false, "安装已取消。", "cancelled");
+            await Finish(false, "Installation cancelled.", "cancelled", "media_install_cancelled");
             throw;
         }
         catch (Exception ex)
         {
             error = ex.Message;
             await Finish(false, null, error);
-            throw new InvalidOperationException("安装未完成：" + ex.Message + "。完整输出保存在 " + receiptPath);
+            if (ex is StoreIntegrityException) throw new StoreIntegrityException("Installation did not complete: " + ex.Message + ". Full output is saved in " + receiptPath, ex);
+            throw new MediaFailureException("Installation did not complete: " + ex.Message + ". Full output is saved in " + receiptPath, ex);
         }
 
         MediaTools.InvalidateCache();
@@ -214,14 +220,14 @@ public static class MediaInstaller
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            await Finish(false, "安装后核验已取消。", "cancelled");
+            await Finish(false, "Post-install verification cancelled.", "cancelled", "media_verification_cancelled");
             throw;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             error = ex.Message;
             await Finish(false, null, error);
-            throw new InvalidOperationException("安装后仍未通过完整编码核验：" + ex.Message + "。完整输出保存在 " + receiptPath);
+            throw new MediaFailureException("The complete encoding check still fails after installation: " + ex.Message + ". Full output is saved in " + receiptPath, ex);
         }
         return await Finish(true, null, null);
     }
@@ -229,14 +235,14 @@ public static class MediaInstaller
     /// <summary>Run a package manager with a hard timeout, draining both output
     /// streams in every outcome — success, timeout kill and user cancellation —
     /// so the receipt always carries what the manager printed.</summary>
-    private static async Task RunLogged(string exe, string[] args, TimeSpan timeout, List<string> output, CancellationToken ct)
+    private static async Task RunLogged(string exe, string[] args, TimeSpan timeout, Action<string> output, CancellationToken ct)
     {
-        output.Add("> " + exe + " " + string.Join(" ", args));
+        output("> " + exe + " " + string.Join(" ", args));
         var info = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var a in args) info.ArgumentList.Add(a);
-        using var p = Process.Start(info) ?? throw new InvalidOperationException("could not start " + exe);
-        var so = p.StandardOutput.ReadToEndAsync();
-        var se = p.StandardError.ReadToEndAsync();
+        using var p = Process.Start(info) ?? throw new MediaFailureException("could not start " + exe);
+        var so = ReadLines(p.StandardOutput, output);
+        var se = ReadLines(p.StandardError, output);
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         using (linked.Token.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch (InvalidOperationException) { } }))
@@ -254,19 +260,24 @@ public static class MediaInstaller
                 await Drain(so, output); await Drain(se, output);
             }
             if (timedOut)
-                throw new TimeoutException($"{exe} 超过 {timeout.TotalMinutes:0} 分钟未完成，已终止。");
+                throw new TimeoutException($"{exe} did not finish within {timeout.TotalMinutes:0} minutes and was terminated.");
             if (p.ExitCode != 0)
-                throw new InvalidOperationException(exe + " exited " + p.ExitCode + ": " + output[^1].Trim());
+                throw new MediaFailureException(exe + " exited " + p.ExitCode + "; see the installation output/receipt.");
         }
     }
 
-    private static async Task Drain(Task<string> stream, List<string> output)
+    private static async Task ReadLines(StreamReader stream, Action<string> output)
+    {
+        while (await stream.ReadLineAsync() is { } line) output(line);
+    }
+    private static async Task Drain(Task stream, Action<string> output)
     {
         try
         {
             var done = await Task.WhenAny(stream, Task.Delay(TimeSpan.FromSeconds(15)));
-            output.Add(done == stream ? await stream : "(output pipe stayed open after termination; truncated)");
+            if (done == stream) await stream;
+            else output("(output pipe stayed open after termination; truncated)");
         }
-        catch (Exception) { output.Add("(manager output unreadable)"); }
+        catch (Exception) { output("(manager output unreadable)"); }
     }
 }

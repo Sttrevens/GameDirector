@@ -1,14 +1,14 @@
 {
-  "version": 1,
-  "manifestSha256": "20670561cff03ff30b76a0b85abc975e223905663bacd08a752b93be4c9ce73a",
+  "version": 2,
+  "manifestSha256": "d7b5f29cec5d745e9a86aa56e1315fbed214175ae67b8e6bfb6dce8cba459435",
   "performances": [
     {
       "actor": "legion-body",
       "clip": "bow",
-      "meaning": "上身前倾，可用作鞠躬或礼貌开场",
+      "meaning": "Leans the upper body forward; useful as a bow or a polite opening.",
       "usefulFor": [],
       "constraints": [
-        "纯视觉编排；不证明战斗伤害或真实观众事件。"
+        "Visual staging only; does not establish combat damage or actual audience events."
       ],
       "evidence": [
         {
@@ -26,11 +26,11 @@
     {
       "actor": "minotaur-body",
       "clip": "roar",
-      "meaning": "头部上仰；是否读成威胁需要实拍确认",
+      "meaning": "Tilts the head upward; shoot and review to confirm whether it reads as a threat.",
       "usefulFor": [],
       "constraints": [
-        "纯视觉编排；不证明战斗伤害或真实观众事件。",
-        "当前牛头人造型及暗部细节不足，仅能读出头部抬起；不能声称已清晰表达愤怒。"
+        "Visual staging only; does not establish combat damage or actual audience events.",
+        "The current minotaur model and shadow detail only make the raised head readable; do not claim it clearly conveys anger."
       ],
       "evidence": [
         {
@@ -42,10 +42,10 @@
     {
       "actor": "legion-body",
       "clip": "down",
-      "meaning": "上身前倒并降低位置，可表示倒下",
+      "meaning": "Pitches the upper body forward and lowers it; can suggest falling.",
       "usefulFor": [],
       "constraints": [
-        "纯视觉编排；不证明战斗伤害或真实观众事件。"
+        "Visual staging only; does not establish combat damage or actual audience events."
       ],
       "evidence": [
         {
@@ -63,11 +63,11 @@
     {
       "actor": "legion-body",
       "clip": "wave",
-      "meaning": "单侧肢体持续挥动，可用作招呼或不服输的收尾",
+      "meaning": "Repeatedly waves one limb; useful as a greeting or a defiant finish.",
       "usefulFor": [],
       "constraints": [
-        "纯视觉编排；不证明战斗伤害或真实观众事件。",
-        "当前广角中挥手幅度和肢体轮廓不足；设计语义尚未通过可读性审片。"
+        "Visual staging only; does not establish combat damage or actual audience events.",
+        "The current wide shot does not make the wave's range and silhouette clear enough; its intended meaning has not passed a readability review."
       ],
       "evidence": [
         {

@@ -5,7 +5,7 @@ using GameDirector.Decisions;
 
 namespace GameDirector.Workbench;
 
-public sealed record ProviderSettings(string Endpoint, string Model, string ApiKey);
+public sealed record ProviderSettings(string Endpoint, string Model, string? ApiKey);
 public sealed record DirectRequest(string ProjectId, string Brief, FilmPlan? CurrentFilm, bool Render, string RequestId);
 
 /// <summary>Bounds of one model round-trip. Named once so the settings UI, the
@@ -30,38 +30,49 @@ public sealed class ApiDirector
     private ProviderSettings? settings;
     private readonly SemaphoreSlim serial = new(1, 1);
     private readonly Func<ProviderSettings, IPlanGenerator> generatorFactory;
+    private readonly CancellationToken applicationStopping;
 
-    public ApiDirector(Func<ProviderSettings, IPlanGenerator>? generatorFactory = null) =>
+    public ApiDirector(Func<ProviderSettings, IPlanGenerator>? generatorFactory = null, CancellationToken applicationStopping = default)
+    {
         this.generatorFactory = generatorFactory ?? (s => new ChatCompletionsPlanGenerator(s));
+        this.applicationStopping = applicationStopping;
+    }
 
-    public object Status => new { configured = settings != null, endpoint = settings?.Endpoint, model = settings?.Model, keyStorage = "memory-only; cleared when Workbench stops" };
+    public object Status => new { configured = settings != null, endpoint = settings?.Endpoint, model = settings?.Model, hasKey = !string.IsNullOrEmpty(settings?.ApiKey), keyStorage = "memory-only; cleared when Workbench stops" };
     public object Configure(ProviderSettings input)
     {
         if (input.Endpoint == "" && input.ApiKey == "") { settings = null; return Status; }
         if (!Uri.TryCreate(input.Endpoint, UriKind.Absolute, out var uri) || uri.UserInfo != "" || uri.Query != "" || uri.Fragment != "" ||
-            !(uri.Scheme == "https" || uri.Scheme == "http" && uri.IsLoopback) || string.IsNullOrWhiteSpace(input.Model) || input.Model.Length > ApiDirectorPolicy.MaxModelChars || input.ApiKey.Length > ApiDirectorPolicy.MaxApiKeyChars)
+            !(uri.Scheme == "https" || uri.Scheme == "http" && uri.IsLoopback) || string.IsNullOrWhiteSpace(input.Model) || input.Model.Length > ApiDirectorPolicy.MaxModelChars || input.ApiKey?.Length > ApiDirectorPolicy.MaxApiKeyChars)
             throw new ArgumentException("Provide an HTTPS Chat Completions endpoint and a model. HTTP is allowed only for a local model.");
-        settings = input; return Status;
+        // Keys are write-only: null keeps the stored key, but only for the exact
+        // same endpoint — a stored key never follows the user to a new host.
+        settings = input with { ApiKey = input.ApiKey ?? (settings != null && settings.Endpoint == input.Endpoint ? settings.ApiKey : null) };
+        return Status;
     }
     public async Task<object> Direct(DirectRequest request, Studio studio, DecisionService? decisions, CancellationToken ct)
     {
         if (!FilmCompiler.ValidId(request.RequestId) || string.IsNullOrWhiteSpace(request.Brief) || request.Brief.Length > ApiDirectorPolicy.MaxBriefChars) throw new ArgumentException("A brief (up to " + ApiDirectorPolicy.MaxBriefChars + " characters) and a stable requestId are required.");
+        // Only server shutdown and existing per-stage timeouts bound paid work,
+        // even when embedded without a host token. Never link RequestAborted.
+        using var paid = CancellationTokenSource.CreateLinkedTokenSource(applicationStopping);
+        ct = paid.Token;
         await serial.WaitAsync(ct);
         try
         {
             var project = studio.Project(request.ProjectId);
             var directory = studio.StorePath("proposals", project.Id); Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, request.RequestId + ".json");
-            FilmPlan film; var hash = FilmCompiler.Hash(request);
+            FilmPlan film; var hash = ContentIdentity.Of(request);
             if (File.Exists(path))
             {
-                var saved = JsonNode.Parse(File.ReadAllText(path))!;
-                if (saved["requestHash"]!.GetValue<string>() != hash) throw new InvalidOperationException("This director requestId has different inputs.");
-                film = DslJson.Deserialize<FilmPlan>(saved["film"]!.ToJsonString());
+                var saved = StoredJson.Node(path)!;
+                if (saved["requestHash"]!.GetValue<string>() != hash) throw new RequestConflictFault("This director requestId has different inputs.");
+                film = StoredJson.Diagnose(() => DslJson.Deserialize<FilmPlan>(saved["film"]!.ToJsonString()));
             }
             else
             {
-                var config = settings ?? throw new InvalidOperationException("Connect a model API in settings first.");
+                var config = settings ?? throw new ProviderNotConfiguredFault("Connect a model API in settings first.");
                 project = await studio.Connect(project.Id, ct);
                 // Bounded decision preparation: when the decision provider is
                 // configured and performance matching is enabled and calibrated,
@@ -96,10 +107,10 @@ public sealed class ApiDirector
                     selectedCandidateId = preparation.SelectedCandidateId,
                     used = preparation.EvidenceContext != null,
                 };
-                DslJson.SaveAtomic(path, new { requestHash = hash, film, model = config.Model, sourceManifestHash = FilmCompiler.Hash(project.Manifest), performanceDecision });
+                DslJson.SaveAtomic(path, new { requestHash = hash, film, model = config.Model, sourceManifestHash = ManifestIdentity.Of(project.Manifest!), performanceDecision });
             }
             var job = request.Render ? await studio.Submit(new ProductionRequest { RequestId = request.RequestId, ProjectId = project.Id, Film = film }, ct) : null;
-            return new { film, job };
+            return new { film, job = job == null ? null : ProductionJobFlow.View(job) };
         }
         finally { serial.Release(); }
     }

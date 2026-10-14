@@ -37,14 +37,28 @@ public sealed class DecisionService
     private readonly object gate = new();
     private readonly SemaphoreSlim serial = new(1, 1);
     private readonly Func<DecisionProviderSettings, IDecisionProvider> providerFactory;
+    private readonly CancellationToken applicationStopping;
 
-    public DecisionService(Studio studio, Func<DecisionProviderSettings, IDecisionProvider>? providerFactory = null)
+    public DecisionService(Studio studio, Func<DecisionProviderSettings, IDecisionProvider>? providerFactory = null, CancellationToken applicationStopping = default)
     {
         this.studio = studio;
         this.providerFactory = providerFactory ?? (s => new OpenRouterJevProvider(s));
+        this.applicationStopping = applicationStopping;
         var path = PoliciesPath();
-        policies = File.Exists(path) ? DslJson.Load<DecisionPolicies>(path) : new DecisionPolicies();
-        policies.Validate();
+        policies = File.Exists(path) ? StoredJson.Load<DecisionPolicies>(path) : new DecisionPolicies();
+        StoredJson.Diagnose(() => { policies.Validate(); return policies; });
+    }
+
+    /// <summary>A paid ask must not die with the HTTP client: once admitted it
+    /// is bounded by server shutdown plus the provider's own timeout, so the
+    /// real outcome — not a "cancelled, unknown" record — is what the requestId
+    /// replay returns. Embedded (no host lifetime) the caller's token rules.</summary>
+    private CancellationTokenSource? PaidScope(ref CancellationToken ct)
+    {
+        if (!applicationStopping.CanBeCanceled) return null;
+        var scope = CancellationTokenSource.CreateLinkedTokenSource(applicationStopping);
+        ct = scope.Token;
+        return scope;
     }
 
     // ---- provider connection + policies ----
@@ -59,6 +73,7 @@ public sealed class DecisionService
                 configured = settings != null,
                 endpoint = settings?.Endpoint,
                 model = settings?.Model,
+                hasKey = !string.IsNullOrEmpty(settings?.ApiKey),
                 providerId = OpenRouterJevProvider.Id,
                 keyStorage = "memory-only; cleared when Workbench stops",
                 official = new { endpoint = OpenRouterJevProvider.DefaultEndpoint, model = OpenRouterJevProvider.DefaultModel },
@@ -69,8 +84,10 @@ public sealed class DecisionService
     public object ConfigureProvider(DecisionProviderSettings input)
     {
         if (input.Endpoint == "" && input.ApiKey == "") { lock (gate) settings = null; return ProviderStatus(); }
-        var validated = OpenRouterJevProvider.Validate(input);
-        lock (gate) settings = validated;
+        // Keys are write-only: null keeps the stored key, but only for the exact
+        // same endpoint — a stored key never follows the user to a new host.
+        lock (gate)
+            settings = OpenRouterJevProvider.Validate(input with { ApiKey = input.ApiKey ?? (settings != null && settings.Endpoint == input.Endpoint ? settings.ApiKey : null) });
         return ProviderStatus();
     }
 
@@ -98,7 +115,7 @@ public sealed class DecisionService
     }
 
     private PerformanceCatalog? LoadCatalog(string path) =>
-        File.Exists(path) ? DslJson.Load<PerformanceCatalog>(path) : null;
+        File.Exists(path) ? StoredJson.Load<PerformanceCatalog>(path) : null;
 
     public PerformanceCatalog ReadCatalog(string projectId) =>
         LoadCatalog(CatalogPath(projectId)) ?? throw new KeyNotFoundException("No performance catalog exists for this project.");
@@ -109,14 +126,14 @@ public sealed class DecisionService
         var path = CatalogPath(projectId);
         var catalog = LoadCatalog(path);
         if (catalog == null) return new { present = false };
-        var liveHash = project.Manifest != null ? FilmCompiler.Hash(project.Manifest) : null;
+        var liveHash = project.Manifest != null ? ManifestIdentity.Of(project.Manifest) : null;
         var errors = project.Manifest != null
             ? CatalogTools.Validate(catalog, project.Manifest, liveHash!)
             : new List<string> { "engine not connected; manifest freshness unknown" };
         return new
         {
             present = true,
-            hash = FilmCompiler.Hash(catalog),
+            hash = ContentIdentity.Of(catalog),
             manifestHash = catalog.ManifestSha256,
             liveManifestHash = liveHash,
             fresh = liveHash != null && catalog.ManifestSha256 == liveHash && errors.Count == 0,
@@ -164,7 +181,7 @@ public sealed class DecisionService
             }
             var catalog = new PerformanceCatalog
             {
-                ManifestSha256 = FilmCompiler.Hash(project.Manifest),
+                ManifestSha256 = ManifestIdentity.Of(project.Manifest!),
                 Performances = project.Manifest!.Actors.SelectMany(a => a.Clips.Select(c => new PerformanceEntry { Actor = a.Id, Clip = c })).ToList(),
             };
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -223,9 +240,9 @@ public sealed class DecisionService
     private DecisionRecord? Dedupe(string path, string inputHash)
     {
         if (!File.Exists(path)) return null;
-        var saved = DslJson.Load<DecisionRecord>(path);
+        var saved = StoredJson.Load<DecisionRecord>(path);
         if (saved.InputHash != inputHash)
-            throw new InvalidOperationException("This decision requestId already belongs to different inputs; use a new requestId to re-ask.");
+            throw new RequestConflictFault("This decision requestId already belongs to different inputs; use a new requestId to re-ask.");
         return saved;
     }
 
@@ -242,7 +259,7 @@ public sealed class DecisionService
         var root = studio.StorePath("decisions", projectId);
         if (!Directory.Exists(root)) return Array.Empty<object>();
         return Directory.GetFiles(root, "*.json", SearchOption.AllDirectories)
-            .Select(DslJson.Load<DecisionRecord>)
+            .Select(StoredJson.Load<DecisionRecord>)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => (object)new { r.RequestId, r.Task, r.Outcome, r.Reason, r.SelectedCandidateId, r.Model, r.CreatedAt, candidates = r.CandidateIds.Length })
             .ToArray();
@@ -252,7 +269,7 @@ public sealed class DecisionService
     {
         var path = RecordPath(projectId, task, requestId);
         if (!File.Exists(path)) throw new KeyNotFoundException("Decision record not found.");
-        return DslJson.Load<DecisionRecord>(path);
+        return StoredJson.Load<DecisionRecord>(path);
     }
 
     // ---- shared task plumbing ----
@@ -293,7 +310,7 @@ public sealed class DecisionService
         // includes per-task policy (enabled flag
         // and threshold) and provider endpoint+model. Never the API key —
         // rotating a memory-only secret must not orphan audit records.
-        var inputHash = FilmCompiler.Hash(new { inputs, endpoint = snapshot?.Endpoint, model = snapshot?.Model, policy.Enabled, policy.MinConfidence, questionVersion });
+        var inputHash = ContentIdentity.Of(new { inputs, endpoint = snapshot?.Endpoint, model = snapshot?.Model, policy.Enabled, policy.MinConfidence, questionVersion });
         record.InputHash = inputHash;
         record.RequestId = requestId ?? "gen-" + inputHash[..32];
         recordPath = RecordPath(projectId, task, record.RequestId);
@@ -381,14 +398,15 @@ public sealed class DecisionService
     private async Task<(DecisionRecord Record, IReadOnlyList<PerformanceEntry> Eligible)> PerformanceMatchCore(string projectId, string intent, string? requestId, CancellationToken ct, string? preparationId = null)
     {
         await serial.WaitAsync(ct);
+        using var paid = PaidScope(ref ct);
         try
         {
             var project = await studio.Connect(projectId, ct);
             var roots = new string?[] { studio.Root, project.SourceRoot };
-            var manifestHash = FilmCompiler.Hash(project.Manifest);
+            var manifestHash = ManifestIdentity.Of(project.Manifest!);
             var path = CatalogPath(projectId);
             var catalog = LoadCatalog(path);
-            var catalogHash = catalog != null ? FilmCompiler.Hash(catalog) : "";
+            var catalogHash = catalog != null ? ContentIdentity.Of(catalog) : "";
             var eligible = catalog != null ? PerformanceMatchTask.Eligible(catalog) : Array.Empty<PerformanceEntry>();
             var candidateIds = eligible.Select(PerformanceMatchTask.CandidateId).ToArray();
             var run = Begin(projectId, DecisionTasks.PerformanceMatch, requestId, PerformanceMatchTask.QuestionVersion,
@@ -398,7 +416,7 @@ public sealed class DecisionService
             record.ManifestHash = manifestHash;
             record.EvidenceHash = catalogHash;
             record.CandidateIds = candidateIds;
-            record.CandidateHashes = eligible.ToDictionary(PerformanceMatchTask.CandidateId, e => FilmCompiler.Hash(e));
+            record.CandidateHashes = eligible.ToDictionary(PerformanceMatchTask.CandidateId, e => ContentIdentity.Of(e));
 
             if (!run.Policy.Enabled) { record.Outcome = DecisionOutcomes.NeedsReview; record.Reason = "Performance matching is disabled in decision policies."; return (Persist(recordPath, record), eligible); }
             if (catalog == null) { record.Outcome = DecisionOutcomes.NoMatch; record.Reason = "No performance catalog is imported for this project."; return (Persist(recordPath, record), eligible); }
@@ -445,6 +463,7 @@ public sealed class DecisionService
         if (!FilmCompiler.ValidId(request.ShotId) || string.IsNullOrWhiteSpace(request.Intent) || request.Intent.Length > DecisionPolicyBounds.MaxIntentChars)
             throw new ArgumentException("A shot id and an intent (up to " + DecisionPolicyBounds.MaxIntentChars + " characters) are required.");
         await serial.WaitAsync(ct);
+        using var paid = PaidScope(ref ct);
         try
         {
             FilmPlan film;
@@ -457,8 +476,8 @@ public sealed class DecisionService
             var project = await studio.Connect(projectId, ct);
             var roots = new string?[] { studio.Root, project.SourceRoot };
             var manifest = project.Manifest!;
-            var manifestHash = FilmCompiler.Hash(manifest);
-            var filmHash = FilmCompiler.Hash(film);
+            var manifestHash = ManifestIdentity.Of(manifest);
+            var filmHash = ContentIdentity.Of(film);
             var shot = CameraChoiceTask.FindShot(film, request.ShotId);
 
             var supplied = request.Candidates?.Count > 0
@@ -477,7 +496,7 @@ public sealed class DecisionService
                 var error = CameraChoiceTask.ValidateCandidate(film, request.ShotId, candidate.Camera, manifest);
                 if (error == null) eligible.Add(candidate); else rejected.Add(candidate.Id + " (" + error + ")");
             }
-            var candidateHashes = eligible.ToDictionary(c => c.Id, c => FilmCompiler.Hash(c.Camera));
+            var candidateHashes = eligible.ToDictionary(c => c.Id, c => ContentIdentity.Of(c.Camera));
 
             var run = Begin(projectId, DecisionTasks.CameraChoice, request.RequestId, CameraChoiceTask.QuestionVersion,
                 new { request = request with { RequestId = "" }, filmHash, manifestHash, candidateIds = candidateHashes.Keys.ToArray(), candidateHashes },
@@ -538,6 +557,7 @@ public sealed class DecisionService
             throw new ArgumentException("An intent (up to " + DecisionPolicyBounds.MaxIntentChars + " characters) is required.");
         if (request.Bus != null && request.Bus is not ("dialogue" or "music" or "sfx")) throw new ArgumentException("Unknown audio bus.");
         await serial.WaitAsync(ct);
+        using var paid = PaidScope(ref ct);
         try
         {
             var project = studio.Project(projectId);
@@ -547,16 +567,16 @@ public sealed class DecisionService
             // as evidence of how a sound plays. The audit lists exactly the
             // offered set — never the whole library, never a silent subset.
             var candidates = AudioMatchTask.Eligible(media.Select(m => new AudioCandidate(m.Id, m.Name, m.Description, m.Duration))).ToArray();
-            var evidenceHash = FilmCompiler.Hash(candidates.Select(c => new { c.MediaId, c.Name, c.Description, c.DurationSeconds }).OrderBy(c => c.MediaId, StringComparer.Ordinal).ToArray());
+            var evidenceHash = ContentIdentity.Of(candidates.Select(c => new { c.MediaId, c.Name, c.Description, c.DurationSeconds }).OrderBy(c => c.MediaId, StringComparer.Ordinal).ToArray());
             var run = Begin(projectId, DecisionTasks.AudioMatch, request.RequestId, AudioMatchTask.QuestionVersion,
                 new { request = request with { RequestId = "" }, evidenceHash, candidateIds = candidates.Select(c => c.MediaId).ToArray() },
                 roots, out var recordPath, out var saved);
             if (run == null) return saved!;
             var record = run.Record;
-            record.ManifestHash = project.Manifest != null ? FilmCompiler.Hash(project.Manifest) : "";
+            record.ManifestHash = project.Manifest != null ? ManifestIdentity.Of(project.Manifest) : "";
             record.EvidenceHash = evidenceHash;
             record.CandidateIds = candidates.Select(c => c.MediaId).ToArray();
-            record.CandidateHashes = candidates.ToDictionary(c => c.MediaId, c => FilmCompiler.Hash(c));
+            record.CandidateHashes = candidates.ToDictionary(c => c.MediaId, c => ContentIdentity.Of(c));
 
             if (!run.Policy.Enabled) { record.Outcome = DecisionOutcomes.NeedsReview; record.Reason = "Audio matching is disabled in decision policies."; return Persist(recordPath, record); }
             if (candidates.Length == 0)
@@ -595,12 +615,13 @@ public sealed class DecisionService
         if (candidates.Any(c => c == null || !FilmCompiler.ValidId(c.Id) || c.Film == null) || candidates.Select(c => c.Id).Distinct().Count() != candidates.Count)
             throw new ArgumentException("Candidate films need unique stable ids and a film.");
         await serial.WaitAsync(ct);
+        using var paid = PaidScope(ref ct);
         try
         {
             var project = await studio.Connect(projectId, ct);
             var roots = new string?[] { studio.Root, project.SourceRoot };
             var manifest = project.Manifest!;
-            var manifestHash = FilmCompiler.Hash(manifest);
+            var manifestHash = ManifestIdentity.Of(manifest);
 
             var all = new List<FilmRankingCandidate>();
             var eligible = new List<FilmRankingCandidate>();
@@ -613,14 +634,14 @@ public sealed class DecisionService
                 if (text != null) { eligible.Add(candidate); evidence[candidate.Id] = text; }
                 else evidence[input.Id] = LocalPathScrubber.Scrub(reason, roots);
             }
-            var candidateHashes = candidates.ToDictionary(c => c.Id, c => FilmCompiler.Hash(c.Film));
+            var candidateHashes = candidates.ToDictionary(c => c.Id, c => ContentIdentity.Of(c.Film));
             var run = Begin(projectId, DecisionTasks.FilmRanking, request.RequestId, FilmRankingTask.QuestionVersion,
                 new { request = request with { RequestId = "" }, manifestHash, candidateIds = candidates.Select(c => c.Id).ToArray(), candidateHashes },
                 roots, out var recordPath, out var saved);
             if (run == null) return saved!;
             var record = run.Record;
             record.ManifestHash = manifestHash;
-            record.EvidenceHash = FilmCompiler.Hash(evidence.OrderBy(p => p.Key, StringComparer.Ordinal).ToArray());
+            record.EvidenceHash = ContentIdentity.Of(evidence.OrderBy(p => p.Key, StringComparer.Ordinal).ToArray());
             record.CandidateIds = candidates.Select(c => c.Id).ToArray();
             record.CandidateHashes = candidateHashes;
 
@@ -690,6 +711,7 @@ public sealed class DecisionService
                     " labels (each up to " + SemanticReviewTask.MaxLegendEntryChars + " characters).");
         }
         await serial.WaitAsync(ct);
+        using var paid = PaidScope(ref ct);
         try
         {
             var project = studio.Project(projectId); // text-only: no engine connection required
@@ -699,8 +721,8 @@ public sealed class DecisionService
                 request with { RequestId = "" }, roots, out var recordPath, out var saved);
             if (run == null) return saved!;
             var record = run.Record;
-            record.ManifestHash = project.Manifest != null ? FilmCompiler.Hash(project.Manifest) : "";
-            record.EvidenceHash = FilmCompiler.Hash(scrub(request.Subject));
+            record.ManifestHash = project.Manifest != null ? ManifestIdentity.Of(project.Manifest) : "";
+            record.EvidenceHash = ContentIdentity.Of(scrub(request.Subject));
 
             if (!run.Policy.Enabled) { record.Outcome = DecisionOutcomes.NeedsReview; record.Reason = "Semantic review is disabled in decision policies."; return Persist(recordPath, record); }
             if (run.Settings == null) { record.Outcome = DecisionOutcomes.NeedsReview; record.Reason = "Decision provider is not configured."; return Persist(recordPath, record); }
