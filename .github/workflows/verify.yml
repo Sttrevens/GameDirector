@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  # Windows Python defaults to cp1252; every tool reads and writes UTF-8.
+  PYTHONUTF8: '1'
 jobs:
   layout:
     runs-on: ubuntu-latest

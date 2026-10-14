@@ -32,9 +32,9 @@ class LinkTests(unittest.TestCase):
     def test_missing_target_and_anchor_are_reported(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            (root / 'target.md').write_text('# Existing\n')
+            (root / 'target.md').write_text('# Existing\n', encoding='utf-8')
             source = root / 'README.md'
-            source.write_text('[file](absent.md)\n[heading](target.md#missing)\n')
+            source.write_text('[file](absent.md)\n[heading](target.md#missing)\n', encoding='utf-8')
             errors, count = check(root, [source])
             self.assertEqual(2, count)
             self.assertEqual(2, len(errors))
@@ -44,11 +44,11 @@ class LinkTests(unittest.TestCase):
     def test_html_images_references_encoded_paths_and_local_anchors(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            (root / 'a b.md').write_text('# 中 文\n<a id="custom"></a>\n')
+            (root / 'a b.md').write_text('# 中 文\n<a id="custom"></a>\n', encoding='utf-8')
             (root / 'hero.webp').write_bytes(b'image')
             source = root / 'README.md'
             source.write_text('# Here\n[one](a%20b.md#中-文)\n[two][r]\n'
-                              '[r]: <a b.md#custom>\n<img src="hero.webp">\n[local](#here)\n')
+                              '[r]: <a b.md#custom>\n<img src="hero.webp">\n[local](#here)\n', encoding='utf-8')
             errors, count = check(root, [source])
             self.assertEqual([], errors)
             self.assertEqual(4, count)
@@ -67,7 +67,7 @@ class LinkTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             source = Path(folder) / 'README.md'
             source.write_text('```md\n[example](missing.md)\n```\n'
-                              '`[sample](absent.md)`\n[web](https://example.org/nope#x)\n')
+                              '`[sample](absent.md)`\n[web](https://example.org/nope#x)\n', encoding='utf-8')
             self.assertEqual(([], 0), check(Path(folder), [source]))
 
 

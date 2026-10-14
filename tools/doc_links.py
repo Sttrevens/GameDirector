@@ -101,7 +101,7 @@ def check(root, files):
                         line = re.fullmatch(r'L(\d+)(?:-L(\d+))?', fragment)
                         if not line or path.suffix.lower() == '.md':
                             problem = 'missing anchor'
-                        elif max(int(n) for n in line.groups() if n) > len(path.read_text().splitlines()):
+                        elif max(int(n) for n in line.groups() if n) > len(path.read_text(encoding='utf-8').splitlines()):
                             problem = 'source line out of range'
             if problem:
                 errors.append(f'{source.relative_to(root)}: {target}: {problem}')
