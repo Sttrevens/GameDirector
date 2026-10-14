@@ -26,12 +26,20 @@ public class StoreSchemaGuardTests : TempPaths
     }
     private static Dictionary<string, byte[]> Snapshot(string store) =>
         Directory.GetFiles(store, "*", SearchOption.AllDirectories)
-            .ToDictionary(f => Path.GetRelativePath(store, f), File.ReadAllBytes);
+            .ToDictionary(f => Path.GetRelativePath(store, f), Fingerprint);
+    // A live Studio holds .owner with FileShare.None (Windows refuses to read it), so the
+    // ownership lock is compared by size and write time; every data file by its bytes.
+    private static byte[] Fingerprint(string file)
+    {
+        if (Path.GetFileName(file) != ".owner") return File.ReadAllBytes(file);
+        var info = new FileInfo(file);
+        return BitConverter.GetBytes(info.Length).Concat(BitConverter.GetBytes(info.LastWriteTimeUtc.Ticks)).ToArray();
+    }
     private static void AssertByteIdentical(string store, Dictionary<string, byte[]> snapshot)
     {
         Assert.Equal(snapshot.Keys.OrderBy(k => k, StringComparer.Ordinal),
             Directory.GetFiles(store, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(store, f)).OrderBy(k => k, StringComparer.Ordinal));
-        foreach (var (file, bytes) in snapshot) Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(store, file)));
+        foreach (var (file, bytes) in snapshot) Assert.Equal(bytes, Fingerprint(Path.Combine(store, file)));
     }
     private static JsonObject WriteStamp(string store, int schemaVersion, int minReaderSchema, string writerProductVersion)
     {
@@ -69,7 +77,7 @@ public class StoreSchemaGuardTests : TempPaths
         Assert.Equal("第二版", latest.Film!.Title);
         var stamp = ReadStamp(store);
         Assert.Equal(StoreSchema.CurrentSchema, stamp.SchemaVersion);
-        foreach (var (file, bytes) in snapshot) Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(store, file)));
+        foreach (var (file, bytes) in snapshot) Assert.Equal(bytes, Fingerprint(Path.Combine(store, file)));
     }
 
     [Fact]

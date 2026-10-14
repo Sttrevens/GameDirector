@@ -24,7 +24,9 @@ public sealed class GodotDockLogTests
                 var one = (Task)drain.Invoke(null, new object[] { stdout, log })!;
                 var two = (Task)drain.Invoke(null, new object[] { stderr, log })!;
                 await Task.WhenAll(one, two).WaitAsync(TestBudget.Hang);
-                var lines = File.ReadAllLines(path);
+                // The writer still holds the log; Windows needs a reader that shares write access.
+                using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete));
+                var lines = reader.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')).ToArray();
                 Assert.Equal(256, lines.Length);
                 Assert.Equal(128, lines.Count(line => line.StartsWith("[Godot] out-")));
                 Assert.Equal(128, lines.Count(line => line.StartsWith("[Godot] err-")));

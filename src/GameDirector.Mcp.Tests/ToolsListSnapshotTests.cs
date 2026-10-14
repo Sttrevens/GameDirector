@@ -29,7 +29,8 @@ public class ToolsListSnapshotTests
         var path = Path.Combine(AppContext.BaseDirectory, SnapshotFile);
         Assert.True(File.Exists(path), SnapshotFile + " is missing next to the test assembly");
         var expected = await File.ReadAllTextAsync(path);
-        if (actual != expected)
+        // Git may check the snapshot out with CRLF on Windows; compare content, not line endings.
+        if (actual.Replace("\r\n", "\n") != expected.Replace("\r\n", "\n"))
             Assert.Fail("The MCP tools/list surface changed. Review the new surface below; if the change is intended, " +
                 "regenerate src/GameDirector.Mcp.Tests/" + SnapshotFile + " (GD_UPDATE_SNAPSHOT=1) and review the diff.\n" + actual);
     }

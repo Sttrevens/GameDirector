@@ -310,7 +310,7 @@ internal sealed class BridgeHttpFixture : IAsyncDisposable
         loop = Task.Run(async () => {
             try { while (true) {
                 var ctx = await listener.GetContextAsync();
-                requests.Add(Task.Run(async () => { try { await respond(ctx); } catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { } finally { ctx.Response.Close(); } }));
+                requests.Add(Task.Run(async () => { try { await respond(ctx); } catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { } finally { try { ctx.Response.Close(); } catch (Exception ex) when (ex is InvalidOperationException or HttpListenerException or ObjectDisposedException) { /* client already gone (Windows http.sys) */ } } }));
             }} catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { }
         });
     }
