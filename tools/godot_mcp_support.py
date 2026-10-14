@@ -14,8 +14,10 @@ class Mcp:
         # Tests may supply a genuine hashed developer distribution, never bypass integrity.
         environment.pop('GAMEDIRECTOR_DISTRIBUTION_ROOT', None)
         environment.update(env or {})
+        # Own process group (POSIX session / Windows group) so close() reaches gd's MCP companion too.
+        group = dict(creationflags=subprocess.CREATE_NEW_PROCESS_GROUP) if os.name == 'nt' else dict(start_new_session=True)
         self.p = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
-                                  text=True, env=environment, start_new_session=True)
+                                  text=True, env=environment, **group)
         self.reader = threading.Thread(target=self._read, daemon=True)
         self.reader.start()
         try:
@@ -52,13 +54,21 @@ class Mcp:
         try: self.p.wait(timeout=0 if cancel else 10)
         except subprocess.TimeoutExpired:
             # Own process group includes gd's MCP companion, not another agent's server.
-            import signal
-            try: os.killpg(self.p.pid, signal.SIGTERM)
-            except ProcessLookupError: pass
+            self._terminate(force=False)
             try: self.p.wait(timeout=1 if cancel else 10)
-            except subprocess.TimeoutExpired: os.killpg(self.p.pid, signal.SIGKILL); self.p.wait()
+            except subprocess.TimeoutExpired: self._terminate(force=True); self.p.wait()
         self.reader.join(timeout=1)
         self.p.stdout.close()
         self.log.close()
+    def _terminate(self, force):
+        if os.name == 'nt':
+            # taskkill /T ends the whole tree started for this client.
+            subprocess.run(['taskkill', '/PID', str(self.p.pid), '/T'] + (['/F'] if force else []),
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if force and self.p.poll() is None: self.p.kill()
+            return
+        import signal
+        try: os.killpg(self.p.pid, signal.SIGKILL if force else signal.SIGTERM)
+        except ProcessLookupError: pass
     def __enter__(self): return self
     def __exit__(self, *_): self.close()
