@@ -49,5 +49,7 @@ if [[ "${1:-}" == "--check" ]]; then
 else
   mkdir -p "$(dirname "$TARGET")"
   cp "$DLL" "$TARGET"
+  # Record the canonical bytes so hosts without bash (Windows packaging) can verify them.
+  python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$TARGET" > "$REPO_ROOT/tools/core-dll.sha256"
   echo "OK: packages/com.gamedirector.unity/Plugins/GameDirector.Core.dll"
 fi

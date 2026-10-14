@@ -22,6 +22,10 @@ class ArchiveLayoutTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 dist.assert_no_local_paths(out, dist.REPO)
 
+    def test_recorded_core_dll_hash_matches_the_committed_dll(self):
+        recorded = (dist.REPO / dist.CORE_DLL_HASH).read_text(encoding='utf-8').strip()
+        self.assertEqual(recorded, dist.sha256(dist.REPO / dist.CORE_DLL))
+
     def test_release_status_requires_a_clean_worktree(self):
         clean = {"sourceCommit": "c", "sourceWorktreeDirty": False}
         dirty = {"sourceCommit": "c", "sourceWorktreeDirty": True}

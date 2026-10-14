@@ -93,9 +93,19 @@ def dotnet(root: Path, args: list) -> None:
     subprocess.run(["dotnet", *args], cwd=root, check=True)
 
 
+CORE_DLL = "packages/com.gamedirector.unity/Plugins/GameDirector.Core.dll"
+CORE_DLL_HASH = "tools/core-dll.sha256"
+
+
 def verify_core_dll(root: Path) -> None:
-    """Package only the canonical Unity DLL verified against pinned-SDK sources."""
-    subprocess.run(["bash", str(root / "tools/build_core_dll.sh"), "--check"], cwd=root, check=True)
+    """Package only the canonical Unity DLL. POSIX hosts rebuild it with the pinned
+    SDK and compare bytes; every host checks the recorded canonical hash, which is
+    the only check on Windows (no bash there; CI proves the hash on Linux)."""
+    if os.name != "nt":
+        subprocess.run(["bash", str(root / "tools/build_core_dll.sh"), "--check"], cwd=root, check=True)
+    recorded = (root / CORE_DLL_HASH).read_text(encoding="utf-8").strip()
+    if sha256(root / CORE_DLL) != recorded:
+        raise SystemExit(f"{CORE_DLL} does not match {CORE_DLL_HASH}; run tools/build_core_dll.sh and commit both")
 
 
 def copy_release_documents(root: Path, dest: Path) -> None:
