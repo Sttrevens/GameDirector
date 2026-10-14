@@ -28,7 +28,7 @@ public class ExpectCommandTests : TempPaths
                 default:bytes=Encoding.UTF8.GetBytes("{}");break;
             }
             c.Response.ContentLength64=bytes.Length;await c.Response.OutputStream.WriteAsync(bytes);c.Response.Close();
-        }}catch(Exception e)when(e is HttpListenerException or ObjectDisposedException){}});
+        }}catch(Exception e)when(e is HttpListenerException or ObjectDisposedException or ArgumentException){}});
         try{await test(input,output,server.Endpoint,()=>starts);}finally{server.Dispose();await loop;}
     }
     private static async Task<(int Code,string Out,string Error)> Command(params string[] args)

@@ -23,7 +23,7 @@ public class CaptureOutputTests : TempPaths
                 var data = png ? pixels : Encoding.UTF8.GetBytes(DslJson.Serialize(new { capabilities = new Dictionary<string, string> { ["project.sourceRoot"] = source } }));
                 ctx.Response.ContentType = png ? "image/png" : "application/json"; ctx.Response.ContentLength64 = data.Length;
                 await ctx.Response.OutputStream.WriteAsync(data); ctx.Response.Close();
-            }} catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException) { }
+            }} catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException or ArgumentException) { }
         });
         try {
             var output = Path.Combine(root, "external", "frame.png");

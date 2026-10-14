@@ -40,7 +40,7 @@ public class MeasureCommandTests : TempPaths
                     default:bytes=Encoding.UTF8.GetBytes("{}");break;
                 }
                 ctx.Response.ContentLength64=bytes.Length;await ctx.Response.OutputStream.WriteAsync(bytes);ctx.Response.Close();if(cancel)ct.Cancel();
-            }}catch(Exception e)when(e is HttpListenerException or ObjectDisposedException){}
+            }}catch(Exception e)when(e is HttpListenerException or ObjectDisposedException or ArgumentException){}
         });
         var stdout=new StringWriter();var stderr=new StringWriter();int code;
         try{code=await Program.Run(new[]{"measure",timeline,"--frames",spec,"--out",output,"--endpoint",server.Endpoint,"--fps","6","--width","64","--height","64"},stdout,stderr,ct.Token);}
