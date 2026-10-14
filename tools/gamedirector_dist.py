@@ -13,6 +13,7 @@ layout, runtime manifests and archives stay identical. Publishing is plain
 (for example a future GameDirector.Decisions project reference) flows into the
 output automatically — there is no frozen dependency list here to maintain.
 """
+import functools
 import hashlib
 import json
 import os
@@ -131,16 +132,27 @@ def copy_runtime_notices(root: Path, app: dict, rid: str, dest: Path) -> None:
             shutil.copy2(source, target / output)
 
 
+@functools.lru_cache(maxsize=None)
 def nuget_global_packages(root: Path) -> Path:
-    """Offline publish source follows NuGet configuration, never a home literal."""
+    """Offline publish source follows NuGet configuration, never a home literal.
+    Asked once per process; a CLI query killed by the host is retried, then NuGet's
+    documented default folder is used if it exists."""
     configured = os.environ.get("NUGET_PACKAGES")
     if configured:
         return Path(configured).expanduser().resolve()
-    output = subprocess.check_output(["dotnet", "nuget", "locals", "global-packages", "-l"], cwd=root, text=True)
-    for line in output.splitlines():
-        label, separator, folder = line.partition(":")
-        if separator and label.strip() == "global-packages" and folder.strip():
-            return Path(folder.strip()).expanduser().resolve()
+    for _ in range(2):
+        try:
+            output = subprocess.check_output(["dotnet", "nuget", "locals", "global-packages", "-l"],
+                                             cwd=root, text=True, timeout=120)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            continue
+        for line in output.splitlines():
+            label, separator, folder = line.partition(":")
+            if separator and label.strip() == "global-packages" and folder.strip():
+                return Path(folder.strip()).expanduser().resolve()
+    default = Path.home() / ".nuget" / "packages"
+    if default.is_dir():
+        return default.resolve()
     raise SystemExit("dotnet nuget locals did not report the configured global-packages folder")
 
 
