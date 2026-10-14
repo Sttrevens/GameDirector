@@ -122,8 +122,8 @@ class ArchiveLayoutTests(unittest.TestCase):
     def test_godot_asset_library_zip_and_full_archive_carry_the_addon_and_license(self):
         with tempfile.TemporaryDirectory(prefix='gd-addon-archive-') as temporary:
             root=Path(temporary)/'repo'; out=Path(temporary)/'payload'; addon=root/'packages/gamedirector-godot/addons/gamedirector'
-            addon.mkdir(parents=True); (addon/'plugin.cfg').write_text('[plugin]\nname="GameDirector"\n')
-            (addon/'worker.gd').write_text('extends Node\n'); (root/'LICENSE').write_text('test license\n')
+            addon.mkdir(parents=True); (addon/'plugin.cfg').write_bytes(b'[plugin]\nname="GameDirector"\n')
+            (addon/'worker.gd').write_bytes(b'extends Node\n'); (root/'LICENSE').write_bytes(b'test license\n')
             for cache in ('.godot/cache', '__pycache__/module.pyc', 'bin/debug', 'obj/build', '.DS_Store', 'mesh.glb.import'):
                 path = addon / cache
                 path.parent.mkdir(parents=True, exist_ok=True)

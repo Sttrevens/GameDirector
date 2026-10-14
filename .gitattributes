@@ -1,0 +1,11 @@
+# Keep LF in every checkout, so tests, snapshots and hashes behave the same on Windows.
+* text=auto eol=lf
+*.glb binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.mp4 binary
+*.dll binary
+*.ttf binary
+*.otf binary
